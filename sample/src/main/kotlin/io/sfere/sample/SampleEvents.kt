@@ -44,5 +44,8 @@ object SampleEvents {
         shipping = 20.0,
     )
 
+    /** Events sent by the "send 200" button, for the offline-queue flow. */
+    const val QUEUE_TEST_COUNT = 200
+
     const val TEST_DEEP_LINK = "sfereexample://match/42?utm_source=sample_app&utm_campaign=sdk_check&gclid=sample-gclid"
 }

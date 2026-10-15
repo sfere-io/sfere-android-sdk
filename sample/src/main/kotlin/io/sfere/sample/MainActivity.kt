@@ -98,6 +98,9 @@ class MainActivity : Activity() {
         SampleEvents.trackEvents.forEach { (name, properties) ->
             column.addView(button(name) { Sfere.shared.track(name, properties) })
         }
+        column.addView(button("send 200 queue_test_event") {
+            for (index in 1..SampleEvents.QUEUE_TEST_COUNT) Sfere.shared.track("queue_test_event", mapOf("index" to index))
+        })
         column.addView(button("flush now") { Sfere.shared.flush() })
 
         column.addView(heading("Received by the mock"))
