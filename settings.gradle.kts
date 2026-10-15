@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "sfere-android"
 include(":sfere-analytics")
+include(":sample")

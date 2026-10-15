@@ -8,7 +8,7 @@ Collects first-party fan events in your Android app and sends them to Sfere. The
 
 ## Install
 
-> **Not yet published.** No release exists yet: the repository has no remote and no tag, and Maven publishing is not configured yet, so the steps below describe the planned install path for the beta.
+> **Not yet published.** No release exists yet: the repository is private and has no release tag yet, and Maven publishing is not configured yet, so the steps below describe the planned install path for the beta.
 
 During the beta the SDK is published privately to GitHub Packages. Add the repository and the dependency:
 
