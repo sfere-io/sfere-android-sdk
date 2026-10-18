@@ -30,8 +30,8 @@ android {
         unitTests {
             isReturnDefaultValues = true
             all {
-                // Shared fixtures live at the repo root so every Sfere SDK tests against the same file.
-                it.systemProperty("sfere.fixtures.dir", rootProject.projectDir.resolve("../fixtures").canonicalPath)
+                // The fixtures are shared with the iOS SDK: sfere-ios-sdk has an identical copy, and tools/parity.sh checks they match.
+                it.systemProperty("sfere.fixtures.dir", rootProject.projectDir.resolve("fixtures").canonicalPath)
             }
         }
     }

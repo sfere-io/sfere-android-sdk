@@ -222,7 +222,7 @@ class TransportTest {
     private fun <T> assertNotNull(value: T?): T = assertNotNull(null, value)
 
     /**
-     * The cross-platform parity scenario. The iOS WireTests run the same calls; with
+     * The cross-platform parity scenario. The iOS WireTests (sfere-ios-sdk) run the same calls; with
      * SFERE_PARITY_DIR set, each platform writes its upload body there for a key-by-key comparison.
      */
     @Test

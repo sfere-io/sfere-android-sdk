@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Android: test",
+      "type": "shell",
+      "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sfere-analytics:testDebugUnitTest",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: build AAR",
+      "type": "shell",
+      "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sfere-analytics:assembleRelease && ls -lh sfere-analytics/build/outputs/aar/",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: build sample app",
+      "type": "shell",
+      "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sample:assembleDebug && ls -lh sample/build/outputs/apk/debug/",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: stop Gradle daemons",
+      "detail": "Frees the memory the Gradle daemon holds (Kotlin compiles inside it, so there is no Kotlin daemon)",
+      "type": "shell",
+      "command": "if pgrep -f 'GradleDaemon' >/dev/null; then JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew --stop -q; sleep 2; if pgrep -f 'GradleDaemon' >/dev/null; then echo 'A Gradle daemon is still running (another Gradle version or project?)'; exit 1; else echo 'Stopped the Gradle daemon'; fi; else echo 'Nothing to stop: no Gradle daemon was running'; fi",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Parity: compare iOS and Android payloads",
+      "detail": "Needs sfere-ios-sdk and sfere-android-sdk side by side. Checks the shared files match, runs the parity scenario on both SDKs and diffs the upload bodies",
+      "type": "shell",
+      "command": "tools/parity.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Mock ingest: start",
+      "detail": "Starts tools/mock_ingest.mjs on port 4320, or reuses the one already running",
+      "type": "shell",
+      "command": "tools/mock_ingest_ctl.sh start",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Mock ingest: stop",
+      "type": "shell",
+      "command": "tools/mock_ingest_ctl.sh stop",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

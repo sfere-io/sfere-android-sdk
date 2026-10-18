@@ -18,7 +18,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://maven.pkg.github.com/fanfinity/sfere-mobile-sdks") {
+        maven("https://maven.pkg.github.com/fanfinity/sfere-android-sdk") {
             credentials {
                 username = providers.gradleProperty("gpr.user").orNull
                 password = providers.gradleProperty("gpr.token").orNull // a token with read:packages
@@ -201,11 +201,12 @@ Set `debug = true` to log every payload under the `Sfere` tag.
 
 ## Developing this SDK
 
+[`TESTING.md`](TESTING.md) has every test step: the parity check against the iOS SDK, the mock server and the sample app. From the repository root:
+
 ```bash
-cd android
 ./gradlew :sfere-analytics:testDebugUnitTest   # unit + transport tests (JVM, no emulator)
 ./gradlew :sfere-analytics:assembleRelease     # builds the AAR
 ./gradlew --stop                               # stop the Gradle daemons afterwards
 ```
 
-The tests read the shared fixtures in `../fixtures` (deep-link click IDs, event renames), which every Sfere SDK must pass.
+The tests read the shared fixtures in `fixtures/` (deep-link click IDs, event renames), which every Sfere SDK must pass. The iOS SDK (`sfere-ios-sdk`) keeps an identical copy.

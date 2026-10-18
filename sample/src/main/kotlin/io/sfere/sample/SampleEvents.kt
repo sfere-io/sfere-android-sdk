@@ -5,7 +5,7 @@ import io.sfere.analytics.SferePurchase
 
 /**
  * The events the sample app's buttons send, with GA4 properties as in EVENTS.md.
- * The iOS sample app (ios/Example) sends the same list.
+ * The iOS sample app (sfere-ios-sdk, Example/) sends the same list.
  */
 object SampleEvents {
     private val jersey = SfereItem(itemId = "SKU-JERSEY-HOME", itemName = "Home jersey", price = 299.0, quantity = 1, itemCategory = "apparel")
