@@ -29,15 +29,15 @@ on the job that needs more.
 | **Tests & coverage** | `:sfere-analytics:createDebugUnitTestCoverageReport` (runs `testDebugUnitTest`, then JaCoCo) | a test fails. The summary shows the counts and the line/branch coverage; results and the JaCoCo XML are the `test-results` artifact |
 | **SonarQube** | compiles, restores `test-results`, runs `SonarSource/sonarqube-scan-action` with `sonar-project.properties` | the quality gate fails (`sonar.qualitygate.wait=true`). **Skipped with a note when `SONAR_TOKEN` is not set** (Dependabot runs, or before the SonarQube Cloud project exists), so the required check still passes |
 | **Build** | `:sfere-analytics:assembleRelease :sample:assembleDebug`, then `publishReleasePublicationToMavenLocal` and an inspection of the published files | the AAR, POM, sources jar or Gradle module file is missing from `~/.m2`, the AAR has no `classes.jar` / `io.sfere.analytics.Sfere` / consumer ProGuard rules, or the POM does not carry the base library as a dependency. The AAR and the sample APK are the `sfere-analytics` artifact |
-| Dependency review (PRs only) | `actions/dependency-review-action` | a PR adds a dependency with a known vulnerability of severity high or above. Not a required check: it reads the dependency graph that `dependency-graph.yml` submits |
 
 ### `dependency-graph.yml`
 
 On every push to `main`, `gradle/actions/dependency-submission` resolves the
 dependencies of `:sfere-analytics` and `:sample` and submits them to GitHub. This is
-what gives Dependabot alerts (and the dependency review above) the real resolved
-graph rather than only the names in `gradle/libs.versions.toml`. Needs
-`contents: write` on that one job.
+what gives Dependabot alerts the real resolved graph rather than only the names
+in `gradle/libs.versions.toml`. Needs `contents: write` on that one job.
+GitHub's pull-request dependency-review action is not used: on a private
+repository it needs GitHub Advanced Security, which this plan does not include.
 
 ### `release.yml` — publish and release
 

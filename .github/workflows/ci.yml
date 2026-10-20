@@ -13,6 +13,10 @@ name: ci
 #   Tests & coverage  the JVM suite with JaCoCo coverage
 #   SonarQube         SonarQube Cloud scan of that coverage (skipped without SONAR_TOKEN)
 #   Build             release AAR, sample APK, and a local Maven publish of the artifact
+#
+# Not here: GitHub's dependency-review action needs Advanced Security on a private
+# repository. Dependabot alerts (fed by dependency-graph.yml) cover vulnerable
+# dependencies instead.
 
 on:
   pull_request:
@@ -338,18 +342,3 @@ jobs:
             sfere-analytics/build/outputs/aar/*.aar
             sample/build/outputs/apk/debug/*.apk
           retention-days: 14
-
-  # GitHub's own review of dependency changes in a pull request: new vulnerable or
-  # disallowed-licence dependencies fail the check. Reads the dependency graph that
-  # dependency-graph.yml submits from main.
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: on-failure

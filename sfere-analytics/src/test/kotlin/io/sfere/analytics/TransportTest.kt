@@ -4,6 +4,7 @@ import com.segment.analytics.kotlin.core.Analytics
 import com.segment.analytics.kotlin.core.Configuration
 import com.segment.analytics.kotlin.core.Settings
 import com.segment.analytics.kotlin.core.Telemetry
+import com.segment.analytics.kotlin.core.UserInfo
 import com.segment.analytics.kotlin.core.utilities.InMemoryStorageProvider
 import com.segment.analytics.kotlin.core.utilities.encodeToBase64
 import io.sfere.analytics.internal.FakeClock
@@ -15,6 +16,7 @@ import io.sfere.analytics.internal.installSfere
 import io.sfere.analytics.internal.validateHost
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -77,7 +79,18 @@ class TransportTest {
         val analytics = Analytics(configuration).also { instances += it }
         val store = InMemoryKeyValueStore()
         val consent = installSfere(analytics, host, config, store, clock)
+        awaitStartup(analytics)
         return Harness(Sfere(analytics, consent, store), analytics, store, writeKey)
+    }
+
+    /**
+     * The base library provides its user state on its own dispatcher after construction. An event processed
+     * before that has no anonymous id and is dropped inside the library ("lateinit property anonymousId has not
+     * been initialized"), which made the first upload never happen on a slow CI runner. The tests are about the
+     * wire shape, so they start from a started library, the way an app's first event normally finds it.
+     */
+    private fun awaitStartup(analytics: Analytics) {
+        waitUntil { runBlocking { analytics.store.currentState(UserInfo::class) } != null }
     }
 
     private fun waitUntil(timeoutMs: Long = 10_000, condition: () -> Boolean) {
