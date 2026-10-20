@@ -5,11 +5,7 @@ package io.sfere.analytics.internal
  * and a new one starts after [timeoutMs] without events. App foreground sends `app_opened`, so it
  * counts as activity.
  */
-internal class SessionTracker(
-    private val store: KeyValueStore,
-    private val clock: Clock,
-    private val timeoutMs: Long,
-) {
+internal class SessionTracker(private val store: KeyValueStore, private val clock: Clock, private val timeoutMs: Long) {
     internal data class Tick(val id: Long, val isNew: Boolean)
 
     private var id: Long? = null
@@ -31,7 +27,7 @@ internal class SessionTracker(
         val now = clock.nowMillis()
         val current = id
         val isNew = current == null || now - lastActivity > timeoutMs
-        val sessionId = if (isNew) now else current!!
+        val sessionId = if (isNew) now else current
         id = sessionId
         lastActivity = now
         store.putString(KEY, "$sessionId:$now")

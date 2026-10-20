@@ -18,7 +18,7 @@ Collects first-party fan events in your Android app and sends them to Sfere. The
 
 - Artifact: `io.sfere:analytics`
 - Android 5.0+ (API 21)
-- Kotlin and Java
+- Kotlin and Java. Kotlin apps need Kotlin 2.3 or newer (the SDK is built with Kotlin 2.4).
 
 ## Install
 
