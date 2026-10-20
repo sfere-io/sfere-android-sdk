@@ -11,19 +11,19 @@
 
 # Sensitive paths: what CI runs, how the artifact is built and published, and
 # what every event carries on the wire. A maintainer approves these.
-/.github/                       @mabumusa1 @KaramYaaqba
-/.githooks/                     @mabumusa1 @KaramYaaqba
-/gradle/                        @mabumusa1 @KaramYaaqba
-/gradlew                        @mabumusa1 @KaramYaaqba
-/gradlew.bat                    @mabumusa1 @KaramYaaqba
-/build.gradle.kts               @mabumusa1 @KaramYaaqba
-/settings.gradle.kts            @mabumusa1 @KaramYaaqba
-/gradle.properties              @mabumusa1 @KaramYaaqba
-/sfere-analytics/build.gradle.kts   @mabumusa1 @KaramYaaqba
-/sfere-analytics/consumer-rules.pro @mabumusa1 @KaramYaaqba
-/sfere-analytics/api/           @mabumusa1 @KaramYaaqba
-/fixtures/                      @mabumusa1 @KaramYaaqba
-/config/                        @mabumusa1 @KaramYaaqba
-/SECURITY.md                    @mabumusa1 @KaramYaaqba
-/CONTRIBUTING.md                @mabumusa1 @KaramYaaqba
-/docs/ci-cd.md                  @mabumusa1 @KaramYaaqba
+/.github/                       @mabumusa1 @KaramYaaqba @Noice-Anas
+/.githooks/                     @mabumusa1 @KaramYaaqba @Noice-Anas
+/gradle/                        @mabumusa1 @KaramYaaqba @Noice-Anas
+/gradlew                        @mabumusa1 @KaramYaaqba @Noice-Anas
+/gradlew.bat                    @mabumusa1 @KaramYaaqba @Noice-Anas
+/build.gradle.kts               @mabumusa1 @KaramYaaqba @Noice-Anas
+/settings.gradle.kts            @mabumusa1 @KaramYaaqba @Noice-Anas
+/gradle.properties              @mabumusa1 @KaramYaaqba @Noice-Anas
+/sfere-analytics/build.gradle.kts   @mabumusa1 @KaramYaaqba @Noice-Anas
+/sfere-analytics/consumer-rules.pro @mabumusa1 @KaramYaaqba @Noice-Anas
+/sfere-analytics/api/           @mabumusa1 @KaramYaaqba @Noice-Anas
+/fixtures/                      @mabumusa1 @KaramYaaqba @Noice-Anas
+/config/                        @mabumusa1 @KaramYaaqba @Noice-Anas
+/SECURITY.md                    @mabumusa1 @KaramYaaqba @Noice-Anas
+/CONTRIBUTING.md                @mabumusa1 @KaramYaaqba @Noice-Anas
+/docs/ci-cd.md                  @mabumusa1 @KaramYaaqba @Noice-Anas
