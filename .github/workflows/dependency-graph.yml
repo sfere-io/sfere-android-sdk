@@ -1,0 +1,29 @@
+name: dependency-graph
+
+# Submits the resolved Gradle dependency graph of main to GitHub, so Dependabot
+# alerts and the pull-request dependency review know about every library the SDK
+# and the sample app actually resolve (not only what libs.versions.toml names).
+# Only main is submitted; pull requests compare against it.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # the dependency submission API
+
+jobs:
+  submit:
+    name: Submit Gradle dependency graph
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          dependency-resolution-task: ":sfere-analytics:dependencies :sample:dependencies"

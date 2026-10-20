@@ -35,6 +35,27 @@
       "problemMatcher": []
     },
     {
+      "label": "Android: quality checks",
+      "detail": "What CI's style, analysis and API-contract jobs run: ktlint, detekt, Android Lint and the public API dump check",
+      "type": "shell",
+      "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew ktlintCheck detekt :sfere-analytics:apiCheck :sfere-analytics:lintRelease :sample:lintDebug",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: format Kotlin and update the API dump",
+      "detail": "ktlintFormat, then apiDump. Review the diff of sfere-analytics/api/sfere-analytics.api before committing",
+      "type": "shell",
+      "command": "JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew ktlintFormat :sfere-analytics:apiDump",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Android: stop Gradle daemons",
       "detail": "Frees the memory the Gradle daemon holds (Kotlin compiles inside it, so there is no Kotlin daemon)",
       "type": "shell",

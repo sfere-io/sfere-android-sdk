@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "gradle"]
+    groups:
+      gradle-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # The base library's version is part of the wire contract (context.library.base)
+      # and is mirrored in the iOS SDK's plan: bump it deliberately, not by bot.
+      - dependency-name: "com.segment.analytics.kotlin:android"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github_actions"]
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -10,6 +10,10 @@ import kotlinx.serialization.json.Json
 internal const val LIBRARY_NAME = "@fanfinity/sfere-android"
 internal const val ENABLED_KEY = "sfere_enabled"
 
+// The ingestion endpoint accepts at most 100 events per batch.
+internal const val MAX_FLUSH_AT = 100
+private const val MILLIS_PER_MINUTE = 60_000L
+
 internal val sfereLibrary = LibraryStamp(LIBRARY_NAME, BuildConfig.SDK_VERSION, BuildConfig.BASE_LIBRARY)
 
 internal val sfereUserAgent: String =
@@ -42,7 +46,7 @@ internal fun Configuration.applySfere(host: SfereHost, config: SfereConfig) {
         userAgent = sfereUserAgent,
     )
     httpConfig = sfereHttpConfig()
-    flushAt = config.flushAt.coerceIn(1, 100)
+    flushAt = config.flushAt.coerceIn(1, MAX_FLUSH_AT)
     flushInterval = config.flushInterval.coerceAtLeast(1)
     trackApplicationLifecycleEvents = config.trackLifecycleEvents
     useLifecycleObserver = true
@@ -62,7 +66,7 @@ internal fun installSfere(
     val consent = ConsentStore(store)
     // The config value is the initial consent only: a choice already stored by setConsent wins.
     if (consent.get() == null) config.consent?.let { consent.set(it) }
-    val timeoutMs = config.sessionTimeoutMinutes.coerceAtLeast(1) * 60_000L
+    val timeoutMs = config.sessionTimeoutMinutes.coerceAtLeast(1) * MILLIS_PER_MINUTE
     analytics.add(SfereEnrichmentPlugin(SessionTracker(store, clock, timeoutMs), ClickIdStore(store), consent, clock, library))
     analytics.add(SfereDestination(config.writeKey, host.apiHost, sfereHttpConfig(), library.version))
     if (store.getString(ENABLED_KEY) == "false") analytics.enabled = false

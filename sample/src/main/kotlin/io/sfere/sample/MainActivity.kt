@@ -15,9 +15,9 @@ import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import io.sfere.analytics.Sfere
-import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
+import org.json.JSONArray
 
 /**
  * One scrolling screen: settings, consent and opt-out, a button per v1 event, and the requests the
@@ -60,12 +60,15 @@ class MainActivity : Activity() {
         val keyField = textField("Write key", settings.writeKey, InputType.TYPE_CLASS_TEXT)
         val timeoutField = textField("Session timeout (minutes)", settings.sessionTimeoutMinutes.toString(), InputType.TYPE_CLASS_NUMBER)
         listOf(hostField, keyField, timeoutField).forEach(column::addView)
-        column.addView(button("Save settings") {
-            settings.host = hostField.text.toString()
-            settings.writeKey = keyField.text.toString()
-            settings.sessionTimeoutMinutes = timeoutField.text.toString().toIntOrNull() ?: SampleSettings.DEFAULT_SESSION_TIMEOUT_MINUTES
-            statusText.text = "Saved. Close the app from Recents and open it again to apply."
-        })
+        column.addView(
+            button("Save settings") {
+                settings.host = hostField.text.toString()
+                settings.writeKey = keyField.text.toString()
+                settings.sessionTimeoutMinutes =
+                    timeoutField.text.toString().toIntOrNull() ?: SampleSettings.DEFAULT_SESSION_TIMEOUT_MINUTES
+                statusText.text = "Saved. Close the app from Recents and open it again to apply."
+            },
+        )
 
         column.addView(heading("Consent and opt-out"))
         val analyticsSwitch = Switch(this).apply { text = "Consent: analytics" }
@@ -86,9 +89,14 @@ class MainActivity : Activity() {
         listOf(analyticsSwitch, advertisingSwitch, enabledSwitch).forEach(column::addView)
 
         column.addView(heading("Identity and screens"))
-        column.addView(button("identify sample_user_1") {
-            Sfere.shared.identify("sample_user_1", mapOf("email" to "fan@example.com", "phone" to "+966500000000", "favorite_team" to "home"))
-        })
+        column.addView(
+            button("identify sample_user_1") {
+                Sfere.shared.identify(
+                    "sample_user_1",
+                    mapOf("email" to "fan@example.com", "phone" to "+966500000000", "favorite_team" to "home"),
+                )
+            },
+        )
         column.addView(button("screen: Match Center") { Sfere.shared.screen("Match Center", mapOf("match_id" to "42")) })
         column.addView(button("Open test deep link") { Sfere.shared.openUrl(SampleEvents.TEST_DEEP_LINK) })
         column.addView(button("reset (logout)") { Sfere.shared.reset() })
@@ -98,9 +106,11 @@ class MainActivity : Activity() {
         SampleEvents.trackEvents.forEach { (name, properties) ->
             column.addView(button(name) { Sfere.shared.track(name, properties) })
         }
-        column.addView(button("send 200 queue_test_event") {
-            for (index in 1..SampleEvents.QUEUE_TEST_COUNT) Sfere.shared.track("queue_test_event", mapOf("index" to index))
-        })
+        column.addView(
+            button("send 200 queue_test_event") {
+                for (index in 1..SampleEvents.QUEUE_TEST_COUNT) Sfere.shared.track("queue_test_event", mapOf("index" to index))
+            },
+        )
         column.addView(button("flush now") { Sfere.shared.flush() })
 
         column.addView(heading("Received by the mock"))

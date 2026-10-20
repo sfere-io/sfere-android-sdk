@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import com.segment.analytics.kotlin.android.Analytics as AndroidAnalytics
 import com.segment.analytics.kotlin.android.openUrl
 import com.segment.analytics.kotlin.core.Analytics
 import com.segment.analytics.kotlin.core.Telemetry
@@ -20,7 +21,9 @@ import io.sfere.analytics.internal.toJsonObject
 import io.sfere.analytics.internal.validateConfig
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import com.segment.analytics.kotlin.android.Analytics as AndroidAnalytics
+
+// Longer names are accepted but may be truncated by the ingestion endpoint (GA4 limit).
+private const val MAX_EVENT_NAME_LENGTH = 128
 
 /**
  * The Sfere SDK. Call [setup] once in `Application.onCreate`, then use [shared] anywhere.
@@ -203,7 +206,9 @@ public class Sfere internal constructor(
             SfereLog.debug("track ignored: the event name is empty.")
             return false
         }
-        if (name.length > 128) SfereLog.debug("Event name \"$name\" is over 128 characters; the endpoint may truncate it.")
+        if (name.length > MAX_EVENT_NAME_LENGTH) {
+            SfereLog.debug("Event name \"$name\" is over $MAX_EVENT_NAME_LENGTH characters; the endpoint may truncate it.")
+        }
         if (!SNAKE_CASE.matches(name)) SfereLog.debug("Event name \"$name\" is not snake_case. Use GA4 names, e.g. add_to_cart.")
         return true
     }

@@ -1,10 +1,11 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    `maven-publish`
 }
 
-group = "io.sfere"
-version = "0.1.0"
+group = providers.gradleProperty("GROUP").get()
+version = providers.gradleProperty("VERSION_NAME").get()
 
 android {
     namespace = "io.sfere.analytics"
@@ -15,6 +16,14 @@ android {
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "SDK_VERSION", "\"${project.version}\"")
         buildConfigField("String", "BASE_LIBRARY", "\"analytics-kotlin@${libs.versions.segment.analytics.get()}\"")
+    }
+
+    buildTypes {
+        debug {
+            // JaCoCo for the JVM tests: `createDebugUnitTestCoverageReport` writes
+            // build/reports/coverage/test/debug/report.xml, which CI hands to SonarQube.
+            enableUnitTestCoverage = true
+        }
     }
 
     buildFeatures {
@@ -35,11 +44,30 @@ android {
             }
         }
     }
+
+    lint {
+        // Lint is a CI gate (`lintRelease`): every finding is an error.
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+        // Dependabot owns dependency freshness; a new upstream release must not break CI.
+        disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable")
+    }
+
+    publishing {
+        // One publication, the release AAR with its sources. Javadoc is not shipped yet.
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 kotlin {
     explicitApi()
     jvmToolchain(17)
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 dependencies {
@@ -50,4 +78,67 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
+}
+
+// SonarQube: the Gradle scanner reads the Android sources and class files itself; the test
+// and coverage reports come from createDebugUnitTestCoverageReport (CI runs it first).
+sonar {
+    properties {
+        property("sonar.junit.reportPaths", "${layout.buildDirectory.get()}/test-results/testDebugUnitTest")
+        property("sonar.coverage.jacoco.xmlReportPaths", "${layout.buildDirectory.get()}/reports/coverage/test/debug/report.xml")
+        property("sonar.androidLint.reportPaths", "${layout.buildDirectory.get()}/reports/lint-results-release.xml")
+        property("sonar.androidVariant", "debug")
+    }
+}
+
+// Publishing. Beta: GitHub Packages, private. 1.0.0: Maven Central (same coordinates).
+// Credentials come from Gradle properties (gpr.user / gpr.token, in ~/.gradle/gradle.properties,
+// never in the repo) or, in GitHub Actions, from GITHUB_ACTOR / GITHUB_TOKEN.
+// Release flow: docs/ci-cd.md.
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            groupId = project.group.toString()
+            artifactId = "analytics"
+            version = project.version.toString()
+            afterEvaluate {
+                from(components["release"])
+            }
+            pom {
+                name.set("Sfere Analytics for Android")
+                description.set("Collects first-party fan events in Android apps and sends them to the Sfere ingestion endpoint.")
+                url.set("https://github.com/sfere-io/sfere-android-sdk")
+                organization {
+                    name.set("Sfere")
+                    url.set("https://sfere.io")
+                }
+                developers {
+                    developer {
+                        id.set("sfere")
+                        name.set("Sfere")
+                        email.set("engineering@sfere.io")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/sfere-io/sfere-android-sdk")
+                    connection.set("scm:git:https://github.com/sfere-io/sfere-android-sdk.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/sfere-io/sfere-android-sdk.git")
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/sfere-io/sfere-android-sdk")
+            credentials {
+                username = providers.gradleProperty("gpr.user")
+                    .orElse(providers.environmentVariable("GITHUB_ACTOR"))
+                    .orNull
+                password = providers.gradleProperty("gpr.token")
+                    .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+                    .orNull
+            }
+        }
+    }
 }

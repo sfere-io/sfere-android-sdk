@@ -6,6 +6,7 @@ import com.segment.analytics.kotlin.core.BaseEvent
 import com.segment.analytics.kotlin.core.GroupEvent
 import com.segment.analytics.kotlin.core.IdentifyEvent
 import com.segment.analytics.kotlin.core.ScreenEvent
+import com.segment.analytics.kotlin.core.System as SystemState
 import com.segment.analytics.kotlin.core.TrackEvent
 import com.segment.analytics.kotlin.core.platform.DestinationPlugin
 import com.segment.analytics.kotlin.core.platform.VersionedPlugin
@@ -14,7 +15,8 @@ import com.segment.analytics.kotlin.core.platform.policies.FrequencyFlushPolicy
 import com.segment.analytics.kotlin.core.retry.HttpConfig
 import kotlinx.coroutines.launch
 import sovran.kotlin.Subscriber
-import com.segment.analytics.kotlin.core.System as SystemState
+
+private const val MILLIS_PER_SECOND = 1000L
 
 /**
  * Replaces the base library's own destination (which is not added): same queue, flush policies and
@@ -46,7 +48,7 @@ internal class SfereDestination(
         val flushPolicies = configuration.flushPolicies.ifEmpty {
             listOf(
                 CountBasedFlushPolicy(configuration.flushAt),
-                FrequencyFlushPolicy(configuration.flushInterval * 1000L),
+                FrequencyFlushPolicy(configuration.flushInterval * MILLIS_PER_SECOND),
             )
         }
         pipeline = SferePipeline(analytics, writeKey, flushPolicies, apiHost, httpConfig)

@@ -8,7 +8,8 @@ import io.sfere.analytics.SferePurchase
  * The iOS sample app (sfere-ios-sdk, Example/) sends the same list.
  */
 object SampleEvents {
-    private val jersey = SfereItem(itemId = "SKU-JERSEY-HOME", itemName = "Home jersey", price = 299.0, quantity = 1, itemCategory = "apparel")
+    private val jersey =
+        SfereItem(itemId = "SKU-JERSEY-HOME", itemName = "Home jersey", price = 299.0, quantity = 1, itemCategory = "apparel")
     private val scarf = SfereItem(itemId = "SKU-SCARF", itemName = "Club scarf", price = 79.0, quantity = 2, itemCategory = "accessories")
 
     private fun itemsPayload(vararg items: SfereItem): Map<String, Any?> {
@@ -18,7 +19,11 @@ object SampleEvents {
 
     /** Name and properties for every `track` button, in screen order. */
     val trackEvents: List<Pair<String, Map<String, Any?>>> = listOf(
-        "view_item_list" to mapOf("item_list_id" to "new_season", "item_list_name" to "New season", "items" to listOf(jersey.toJson(), scarf.toJson())),
+        "view_item_list" to mapOf(
+            "item_list_id" to "new_season",
+            "item_list_name" to "New season",
+            "items" to listOf(jersey.toJson(), scarf.toJson()),
+        ),
         "select_item" to mapOf("item_list_id" to "new_season", "items" to listOf(jersey.toJson())),
         "view_item" to itemsPayload(jersey),
         "add_to_wishlist" to itemsPayload(scarf),

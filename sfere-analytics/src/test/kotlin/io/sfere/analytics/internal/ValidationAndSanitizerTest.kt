@@ -8,8 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HostValidationTest {
-    private fun valid(host: String, insecure: Boolean = false) =
-        (validateHost(host, insecure) as HostValidation.Valid).host
+    private fun valid(host: String, insecure: Boolean = false) = (validateHost(host, insecure) as HostValidation.Valid).host
 
     @Test
     fun acceptsHttpsOrigins() {
@@ -21,7 +20,11 @@ class HostValidationTest {
 
     @Test
     fun rejectsPathsQueriesOtherSchemesAndBlank() {
-        for (bad in listOf("", "  ", "ingest.example.com", "ftp://x.com", "https://x.com/v1", "https://x.com?a=1", "https://x.com#f", "https://user@x.com", "https://")) {
+        val badHosts = listOf(
+            "", "  ", "ingest.example.com", "ftp://x.com", "https://x.com/v1",
+            "https://x.com?a=1", "https://x.com#f", "https://user@x.com", "https://",
+        )
+        for (bad in badHosts) {
             assertTrue("expected \"$bad\" to be rejected", validateHost(bad, allowInsecure = true) is HostValidation.Invalid)
         }
     }

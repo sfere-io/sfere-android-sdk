@@ -1,9 +1,9 @@
 package io.sfere.analytics.internal
 
+import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import java.io.File
 
 /** Reads the shared fixtures at the repo root (path set by Gradle as `sfere.fixtures.dir`). */
 internal object Fixtures {

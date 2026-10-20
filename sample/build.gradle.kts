@@ -21,10 +21,29 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        disable += setOf(
+            "GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable",
+            // A test tool, not a shipped app: no translations, no icon, no backup rules, and
+            // targetSdk moves with compileSdk, not with whatever platform the CI runner has.
+            "SetTextI18n", "MissingApplicationIcon", "DataExtractionRules", "OldTargetApi",
+        )
+    }
+}
+
+// The sample is test tooling, not the product: left out of the SonarQube analysis.
+sonar {
+    isSkipProject = true
 }
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 dependencies {
