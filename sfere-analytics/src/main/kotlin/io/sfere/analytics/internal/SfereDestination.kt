@@ -27,7 +27,9 @@ internal class SfereDestination(
     private val apiHost: String,
     private val httpConfig: HttpConfig?,
     private val sdkVersion: String,
-) : DestinationPlugin(), VersionedPlugin, Subscriber {
+) : DestinationPlugin(),
+    VersionedPlugin,
+    Subscriber {
     override val key: String = SFERE_DESTINATION_KEY
 
     private var pipeline: SferePipeline? = null

@@ -26,10 +26,15 @@ android {
         abortOnError = true
         warningsAsErrors = true
         disable += setOf(
-            "GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable",
+            "GradleDependency",
+            "AndroidGradlePluginVersion",
+            "NewerVersionAvailable",
             // A test tool, not a shipped app: no translations, no icon, no backup rules, and
             // targetSdk moves with compileSdk, not with whatever platform the CI runner has.
-            "SetTextI18n", "MissingApplicationIcon", "DataExtractionRules", "OldTargetApi",
+            "SetTextI18n",
+            "MissingApplicationIcon",
+            "DataExtractionRules",
+            "OldTargetApi",
         )
     }
 }

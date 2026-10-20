@@ -51,11 +51,7 @@ internal object ClickIdRules {
     fun fbcFromFbclid(fbclid: String, nowMs: Long): String = "fb.1.$nowMs.$fbclid"
 }
 
-internal data class ParsedClicks(
-    val clientIds: Map<String, String>,
-    val campaign: Map<String, String>,
-    val fbclid: String?,
-) {
+internal data class ParsedClicks(val clientIds: Map<String, String>, val campaign: Map<String, String>, val fbclid: String?) {
     val isEmpty: Boolean get() = clientIds.isEmpty() && campaign.isEmpty()
 }
 

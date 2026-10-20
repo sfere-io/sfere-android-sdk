@@ -23,3 +23,6 @@ the tagged version as the GitHub release notes, so write entries for app develop
   renamed from fanfinity to sfere-io on 2026-10-20)
   with the sources jar; CI gates on every pull request (style, static analysis,
   public API dump, tests with coverage, build).
+- Built with Kotlin 2.4.21, with kotlinx-serialization-json 1.11.0 (part of the public API)
+  and kotlinx-coroutines 1.11.0. Apps that compile Kotlin need Kotlin 2.3 or newer; Java-only
+  apps are not affected.
