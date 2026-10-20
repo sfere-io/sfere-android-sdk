@@ -21,10 +21,23 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        disable += setOf(
+            "GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable",
+            // A test tool, not a shipped app: no translations, no icon, no backup rules.
+            "SetTextI18n", "MissingApplicationIcon", "DataExtractionRules",
+        )
+    }
 }
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 dependencies {

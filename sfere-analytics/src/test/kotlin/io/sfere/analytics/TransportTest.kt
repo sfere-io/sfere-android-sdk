@@ -13,6 +13,8 @@ import io.sfere.analytics.internal.LIBRARY_NAME
 import io.sfere.analytics.internal.applySfere
 import io.sfere.analytics.internal.installSfere
 import io.sfere.analytics.internal.validateHost
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -30,8 +32,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * End to end on the JVM: the real base library (core), the Sfere plugins and destination, and a
@@ -158,7 +158,12 @@ class TransportTest {
 
         val cartContext = addToCart.obj("context")!!
         assertEquals("fan@example.com", cartContext.obj("traits")!!.str("email"))
-        assertEquals(mapOf("gclid" to "G1", "fbc" to "fb.1.${clock.now}.F1"), cartContext.obj("clientIds")!!.mapValues { it.value.jsonPrimitive.content })
+        assertEquals(
+            mapOf("gclid" to "G1", "fbc" to "fb.1.${clock.now}.F1"),
+            cartContext.obj("clientIds")!!.mapValues {
+                it.value.jsonPrimitive.content
+            },
+        )
         assertEquals("ig", cartContext.obj("campaign")!!.str("source"))
         assertNull("identify keeps traits at the top level only", byName.getValue("identify").obj("context")!!["traits"])
 
@@ -203,7 +208,10 @@ class TransportTest {
     fun settingsAreAnsweredLocally() {
         val h = harness(flushAt = 100, flushInterval = 3600)
         val connection = h.analytics.configuration.requestFactory.settings("unused", h.writeKey)
-        val settings = Json { ignoreUnknownKeys = true }.decodeFromString(Settings.serializer(), connection.inputStream.bufferedReader().readText())
+        val settings = Json { ignoreUnknownKeys = true }.decodeFromString(
+            Settings.serializer(),
+            connection.inputStream.bufferedReader().readText(),
+        )
         assertEquals("${server.hostName}:${server.port}/v1/batch", settings.integrations["Sfere"]!!.jsonObject.str("apiHost"))
         assertEquals("0", settings.metrics.str("sampleRate"))
         assertEquals(0, server.requestCount)
@@ -238,11 +246,20 @@ class TransportTest {
         h.sfere.track(
             "add_to_cart",
             mapOf(
-                "currency" to "SAR", "value" to 89.99,
+                "currency" to "SAR",
+                "value" to 89.99,
                 "items" to listOf(mapOf("item_id" to "sku_12345", "item_name" to "Away Jersey", "price" to 89.99, "quantity" to 1)),
             ),
         )
-        h.sfere.purchase(SferePurchase("order_1", "SAR", 89.99, listOf(SfereItem(itemId = "sku_12345", price = 89.99, quantity = 1)), dedupId = "order_1"))
+        h.sfere.purchase(
+            SferePurchase(
+                "order_1",
+                "SAR",
+                89.99,
+                listOf(SfereItem(itemId = "sku_12345", price = 89.99, quantity = 1)),
+                dedupId = "order_1",
+            ),
+        )
         h.sfere.screen("Match Center")
         // + session_started = 6 events
 

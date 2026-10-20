@@ -1,7 +1,7 @@
 package io.sfere.analytics.internal
 
-import com.segment.analytics.kotlin.core.BaseEvent
 import com.segment.analytics.kotlin.core.Analytics
+import com.segment.analytics.kotlin.core.BaseEvent
 import com.segment.analytics.kotlin.core.RequestFactory
 import com.segment.analytics.kotlin.core.Settings
 import com.segment.analytics.kotlin.core.platform.EventPipeline
@@ -11,16 +11,16 @@ import com.segment.analytics.kotlin.core.retry.HttpConfig
 import com.segment.analytics.kotlin.core.retry.RateLimitConfig
 import com.segment.analytics.kotlin.core.utilities.EncodeDefaultsJson
 import com.segment.analytics.kotlin.core.utilities.encodeToBase64
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 
 /** Key of the Sfere destination in settings and in an event's `integrations`. */
 internal const val SFERE_DESTINATION_KEY = "Sfere"
@@ -79,7 +79,9 @@ internal class SfereRequestFactory(
 /** An HttpURLConnection that never connects and answers 200 with a fixed body. */
 internal class LocalResponseConnection(url: URL, body: String) : HttpURLConnection(url) {
     private val bytes = body.toByteArray(Charsets.UTF_8)
-    override fun connect() { connected = true }
+    override fun connect() {
+        connected = true
+    }
     override fun disconnect() = Unit
     override fun usingProxy(): Boolean = false
     override fun getResponseCode(): Int = HTTP_OK

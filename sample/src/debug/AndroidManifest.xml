@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Debug builds only: allow cleartext HTTP to the local mock ingestion server (10.0.2.2 is the Mac from the emulator). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:networkSecurityConfig="@xml/network_security_config" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- networkSecurityConfig exists from API 24; below that, debug builds reach the mock through the default policy. -->
+    <application
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="n" />
 </manifest>

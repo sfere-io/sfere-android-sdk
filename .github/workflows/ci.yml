@@ -1,0 +1,355 @@
+name: ci
+
+# The quality gate. Pull requests: every job below must pass before merging (the
+# "protect-main" ruleset lists them as required checks). Pushes to main: the same
+# run, which also warms the Gradle cache for the pull requests that follow.
+# workflow_call: release.yml reuses the whole gate before it publishes, so a
+# release can never ship bytes that did not pass the checks every PR passes.
+#
+# Jobs, and the gate each one is (docs/ci-cd.md has the long version):
+#   Kotlin style      ktlint, the formatting the pre-commit hook applies
+#   Static analysis   detekt + Android Lint (every warning is an error)
+#   API contract      the public API dump, the version/CHANGELOG rules, no vendor names
+#   Tests & coverage  the JVM suite with JaCoCo coverage
+#   SonarQube         SonarQube Cloud scan of that coverage (skipped without SONAR_TOKEN)
+#   Build             release AAR, sample APK, and a local Maven publish of the artifact
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Gradle builds in CI are non-interactive and must not start a daemon that outlives the step.
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+  JAVA_VERSION: "17"
+
+jobs:
+  style:
+    name: Kotlin style
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: ktlint
+        run: ./gradlew ktlintCheck --no-daemon --stacktrace
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: ktlint-reports
+          path: '**/build/reports/ktlint/'
+          retention-days: 7
+
+  analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: detekt
+        run: ./gradlew detekt --no-daemon
+      - name: Android Lint
+        run: ./gradlew :sfere-analytics:lintRelease :sample:lintDebug --no-daemon
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: analysis-reports
+          path: |
+            **/build/reports/detekt/
+            **/build/reports/lint-results-*.html
+            **/build/reports/lint-results-*.xml
+          retention-days: 7
+
+  contract:
+    name: API contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The rules below compare the pull request against its base.
+          fetch-depth: 0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Client-facing material never names the ingestion vendor (company rule).
+      # Checked on every tracked file, code included: the SDK says "ingestion endpoint".
+      - name: No vendor names
+        run: |
+          # Spelled in pieces so this workflow does not match its own check.
+          PATTERN='jit''su|air''byte|click''house'
+          if git grep -n -i -E "$PATTERN" -- .; then
+            echo "::error::The ingestion vendor is named above. Say 'ingestion endpoint' (rule in CLAUDE.md)."
+            exit 1
+          fi
+          echo "No vendor names."
+
+      # The committed API dump is the one the code produces. Same idea as a
+      # generated API document: `apiDump` is its only writer, `apiCheck` the gate.
+      - name: The committed API dump matches the code
+        run: |
+          if ./gradlew :sfere-analytics:apiCheck --no-daemon; then
+            exit 0
+          fi
+          ./gradlew :sfere-analytics:apiDump --no-daemon -q
+          git diff -- sfere-analytics/api/ > "$RUNNER_TEMP/api.diff" || true
+          {
+            echo "## The committed public API dump is stale"
+            echo
+            echo "\`sfere-analytics/api/sfere-analytics.api\` does not match the code. Regenerate it and commit the result:"
+            echo
+            echo '```console'
+            echo './gradlew :sfere-analytics:apiDump'
+            echo '```'
+            echo
+            echo "What the dump changes:"
+            echo
+            echo '```diff'
+            head -n 2000 "$RUNNER_TEMP/api.diff"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error file=sfere-analytics/api/sfere-analytics.api::The public API dump is stale. Run: ./gradlew :sfere-analytics:apiDump (the diff is in the job summary)."
+          exit 1
+
+      # Reviewers read the public API change in the pull request, the way an API
+      # changelog is read: the dump's diff against the base goes into the summary.
+      - name: Public API changes since the base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if git diff --quiet "origin/${BASE_REF}...HEAD" -- sfere-analytics/api/; then
+            echo "The public API is unchanged."
+            exit 0
+          fi
+          {
+            echo "## Public API changes"
+            echo
+            echo '```diff'
+            git diff "origin/${BASE_REF}...HEAD" -- sfere-analytics/api/
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A tagged version is immutable on GitHub Packages, so the SDK must not change
+      # under a version that is already released. VERSION_NAME (gradle.properties)
+      # moves first. The same change set needs a CHANGELOG entry, unless the pull
+      # request carries the `skip-changelog` label.
+      - name: A change to the SDK bumps an unreleased version and the CHANGELOG
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          VERSION="$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')"
+          case "$VERSION" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error file=gradle.properties::VERSION_NAME='$VERSION' is not X.Y.Z or X.Y.Z-pre.N."; exit 1 ;;
+          esac
+          echo "VERSION_NAME=$VERSION"
+          if git diff --quiet "origin/${BASE_REF}...HEAD" -- \
+               sfere-analytics/src/main sfere-analytics/build.gradle.kts sfere-analytics/consumer-rules.pro gradle/libs.versions.toml; then
+            echo "The SDK did not change; no version or CHANGELOG rule applies."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error file=gradle.properties::The SDK changed but VERSION_NAME=${VERSION} is already released (tag v${VERSION} exists). Bump VERSION_NAME."
+            exit 1
+          fi
+          echo "v${VERSION} is not tagged yet: the version is open for changes."
+          case ",${LABELS}," in
+            *,skip-changelog,*) echo "skip-changelog label: CHANGELOG entry not required."; exit 0 ;;
+          esac
+          if git diff --quiet "origin/${BASE_REF}...HEAD" -- CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::The SDK changed but CHANGELOG.md did not. Add the entry under '## [Unreleased]' (or label the pull request skip-changelog)."
+            exit 1
+          fi
+          echo "CHANGELOG.md moved with the SDK."
+
+  test:
+    name: Tests & coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: JVM tests with JaCoCo coverage
+        # Runs testDebugUnitTest, then writes build/reports/coverage/test/debug/report.xml.
+        run: ./gradlew :sfere-analytics:createDebugUnitTestCoverageReport --no-daemon
+      - name: Test and coverage summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, xml.etree.ElementTree as ET
+          tests = failures = errors = skipped = 0
+          for f in glob.glob("sfere-analytics/build/test-results/testDebugUnitTest/*.xml"):
+              s = ET.parse(f).getroot()
+              tests += int(s.get("tests", 0)); failures += int(s.get("failures", 0))
+              errors += int(s.get("errors", 0)); skipped += int(s.get("skipped", 0))
+          print(f"### Tests: {tests} run, {failures} failed, {errors} errors, {skipped} skipped\n")
+          reports = glob.glob("sfere-analytics/build/reports/coverage/test/debug/report.xml")
+          if reports:
+              root = ET.parse(reports[0]).getroot()
+              print("| metric | % | covered |\n|---|---|---|")
+              for c in root.findall("counter"):
+                  m, c_ = int(c.get("missed")), int(c.get("covered"))
+                  pct = 100.0 * c_ / (m + c_) if m + c_ else 0.0
+                  print(f"| {c.get('type').lower()} | {pct:.1f}% | {c_}/{m + c_} |")
+          else:
+              print("No coverage report was produced.")
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: test-results
+          path: |
+            sfere-analytics/build/test-results/testDebugUnitTest/
+            sfere-analytics/build/reports/tests/testDebugUnitTest/
+            sfere-analytics/build/reports/coverage/test/debug/report.xml
+          retention-days: 14
+
+  # SonarQube Cloud: static analysis plus the coverage from `test`. The scan needs
+  # SONAR_TOKEN (repository secret). Without it (Dependabot runs, forks, or before
+  # the SonarQube project exists) the job passes with a note, so the required
+  # "SonarQube" check stays green. With it, a failed quality gate fails the job
+  # (sonar.qualitygate.wait in sonar-project.properties).
+  sonar:
+    name: SonarQube
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0 # blame data for new-code detection
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: env.SONAR_TOKEN != ''
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: env.SONAR_TOKEN != ''
+        with:
+          cache-read-only: true
+      - name: Compile (the analyzer reads the class files)
+        if: env.SONAR_TOKEN != ''
+        run: ./gradlew :sfere-analytics:compileDebugKotlin :sfere-analytics:compileDebugUnitTestKotlin --no-daemon
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: test-results
+          path: sfere-analytics/build/
+      - uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        if: env.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+      - name: Sonar skipped
+        if: env.SONAR_TOKEN == ''
+        run: echo "SONAR_TOKEN is not set; SonarQube Cloud analysis was skipped." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Release AAR and sample APK
+        run: ./gradlew :sfere-analytics:assembleRelease :sample:assembleDebug --no-daemon
+      # The publish path, exercised on every change without touching a registry: the
+      # same publication the release uses, into the runner's ~/.m2. Then the artifact
+      # is checked the way a consumer would meet it.
+      - name: Publish to the local Maven repository
+        run: ./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal --no-daemon
+      - name: Verify the published artifact
+        run: |
+          VERSION="$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')"
+          DIR="$HOME/.m2/repository/io/sfere/analytics/$VERSION"
+          ls -l "$DIR"
+          for f in "analytics-$VERSION.aar" "analytics-$VERSION.pom" "analytics-$VERSION-sources.jar" "analytics-$VERSION.module"; do
+            [ -s "$DIR/$f" ] || { echo "::error::$f is missing from the published artifact."; exit 1; }
+          done
+          unzip -l "$DIR/analytics-$VERSION.aar" | grep -q 'classes.jar' || { echo "::error::The AAR has no classes.jar."; exit 1; }
+          unzip -p "$DIR/analytics-$VERSION.aar" classes.jar > "$RUNNER_TEMP/classes.jar"
+          unzip -l "$RUNNER_TEMP/classes.jar" | grep -q 'io/sfere/analytics/Sfere.class' || { echo "::error::classes.jar has no io.sfere.analytics.Sfere."; exit 1; }
+          unzip -p "$DIR/analytics-$VERSION.aar" proguard.txt | grep -q 'io.sfere.analytics' || { echo "::error::The consumer ProGuard rules are missing from the AAR."; exit 1; }
+          grep -q "<artifactId>analytics</artifactId>" "$DIR/analytics-$VERSION.pom"
+          grep -q "<version>$VERSION</version>" "$DIR/analytics-$VERSION.pom"
+          # The base library is an `api` dependency: consumers must get it transitively.
+          grep -q "com.segment.analytics.kotlin" "$DIR/analytics-$VERSION.pom" || { echo "::error::The POM does not declare the base library dependency."; exit 1; }
+          {
+            echo "### Published artifact (local): io.sfere:analytics:$VERSION"
+            echo
+            echo '```'
+            ls -l "$DIR" | awk '{print $5, $9}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sfere-analytics
+          path: |
+            sfere-analytics/build/outputs/aar/*.aar
+            sample/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+  # GitHub's own review of dependency changes in a pull request: new vulnerable or
+  # disallowed-licence dependencies fail the check. Reads the dependency graph that
+  # dependency-graph.yml submits from main.
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

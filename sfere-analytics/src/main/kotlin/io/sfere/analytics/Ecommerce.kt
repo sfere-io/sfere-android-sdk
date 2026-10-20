@@ -30,7 +30,9 @@ public class SfereItem @JvmOverloads constructor(
 ) {
     public fun toJson(): JsonObject {
         val fields = LinkedHashMap<String, JsonElement>()
-        fun put(key: String, value: Any?) { if (value != null) fields[key] = value.toJsonElement() }
+        fun put(key: String, value: Any?) {
+            if (value != null) fields[key] = value.toJsonElement()
+        }
         put("item_id", itemId)
         put("item_name", itemName)
         put("price", price)

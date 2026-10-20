@@ -8,9 +8,16 @@ Collects first-party fan events in your Android app and sends them to Sfere. The
 
 ## Install
 
-> **Not yet published.** No release exists yet: the repository is private and has no release tag yet, and Maven publishing is not configured yet, so the steps below describe the planned install path for the beta.
+> **Not yet published.** Publishing is configured, but the first beta (`0.1.0-beta.1`) has not been tagged yet. The steps below are the install path for the beta; they work as soon as the first release exists at <https://github.com/fanfinity/sfere-android-sdk/packages>.
 
-During the beta the SDK is published privately to GitHub Packages. Add the repository and the dependency:
+During the beta the SDK is published privately to GitHub Packages. You need a GitHub account with read access to this repository and a personal access token with the `read:packages` scope. Put the token in your own `~/.gradle/gradle.properties`, never in the app's repository:
+
+```properties
+gpr.user=<your GitHub login>
+gpr.token=<token with read:packages>
+```
+
+Then add the repository and the dependency:
 
 ```kotlin
 // settings.gradle.kts
@@ -29,9 +36,11 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("io.sfere:analytics:0.1.0")
+    implementation("io.sfere:analytics:0.1.0-beta.1")
 }
 ```
+
+Each release is listed at <https://github.com/fanfinity/sfere-android-sdk/releases> with its changelog and the AAR's sha256. At 1.0.0 the same coordinates move to Maven Central and the token goes away.
 
 ## Set up
 
@@ -205,8 +214,11 @@ Set `debug = true` to log every payload under the `Sfere` tag.
 
 ```bash
 ./gradlew :sfere-analytics:testDebugUnitTest   # unit + transport tests (JVM, no emulator)
+./gradlew ktlintCheck detekt :sfere-analytics:apiCheck :sfere-analytics:lintRelease   # what CI checks
 ./gradlew :sfere-analytics:assembleRelease     # builds the AAR
 ./gradlew --stop                               # stop the Gradle daemons afterwards
 ```
+
+Every pull request runs the same checks in GitHub Actions, and a `vX.Y.Z` tag publishes the SDK to GitHub Packages. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the pull-request policy and [`docs/ci-cd.md`](docs/ci-cd.md) the workflows and the release steps.
 
 The tests read the shared fixtures in `fixtures/` (deep-link click IDs, event renames), which every Sfere SDK must pass. The iOS SDK (`sfere-ios-sdk`) keeps an identical copy.

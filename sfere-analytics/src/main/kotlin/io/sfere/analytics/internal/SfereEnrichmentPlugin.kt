@@ -84,7 +84,11 @@ internal class SfereEnrichmentPlugin(
         }
 
         if (event !is IdentifyEvent) {
-            val traits = try { analytics.traits() } catch (e: Exception) { null }
+            val traits = try {
+                analytics.traits()
+            } catch (e: Exception) {
+                null
+            }
             if (!traits.isNullOrEmpty()) {
                 val merged = LinkedHashMap<String, JsonElement>(traits)
                 (context["traits"] as? JsonObject)?.let { merged.putAll(it) }

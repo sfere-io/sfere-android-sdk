@@ -2,15 +2,16 @@
 
 For developers and testers. To add the SDK to an app, see [`README.md`](README.md). The iOS SDK lives in its own repository, [`fanfinity/sfere-ios-sdk`](https://github.com/fanfinity/sfere-ios-sdk), and sends the same payload.
 
-## Status (2026-10-18)
+## Status (2026-10-20)
 
-Ready for internal testing. Not published yet: there is no release, and the install steps in the README describe the planned beta path.
+Ready for internal testing. Not published yet: publishing to GitHub Packages is configured and the first beta tag (`v0.1.0-beta.1`) is pending. The install steps in the README are the beta path.
 
 | Area | State |
 |---|---|
 | Android SDK | 28 unit tests pass and the sample app builds. **Not yet run on an emulator or device**, so `Sfere.setup(context)`, the SharedPreferences store and the Android lifecycle events still need a real run. |
 | Same payload as iOS | The shared parity scenario matches field by field (`tools/parity.sh`). |
 | Staging | Not tested against the real ingestion endpoint yet. Everything so far runs against a local mock. |
+| CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan (once the token exists) and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
 
 ## What you need
 
@@ -35,6 +36,14 @@ JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sfere-analytics:testDebugUn
 ```
 
 Expected: `BUILD SUCCESSFUL`, with 28 tests in `sfere-analytics/build/test-results/`.
+
+The rest of what CI checks, in one command (VS Code task *Android: quality checks*):
+
+```sh
+JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew ktlintCheck detekt :sfere-analytics:apiCheck :sfere-analytics:lintRelease :sample:lintDebug
+```
+
+`ktlintFormat` fixes formatting. `:sfere-analytics:apiDump` updates `sfere-analytics/api/sfere-analytics.api` after an intentional public API change; review that diff like a contract. For coverage, run `:sfere-analytics:createDebugUnitTestCoverageReport` and open `sfere-analytics/build/reports/coverage/test/debug/index.html`.
 
 ### 2. Same payload as iOS
 
@@ -117,3 +126,6 @@ Open an issue in this repository with:
 | `sample` | Sample app |
 | `fixtures/` | Test tables shared with the iOS SDK (deep links, event names). The iOS repository has an identical copy. |
 | `tools/` | Mock ingestion server, parity check |
+| `sfere-analytics/api/` | The public API dump that CI checks (`apiCheck`) |
+| `config/detekt/` | detekt rules |
+| `.github/`, `.githooks/` | CI, release and dependency workflows; the pre-commit hook |

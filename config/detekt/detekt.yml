@@ -1,0 +1,60 @@
+# detekt configuration for the Sfere Android SDK.
+# Built on detekt's default rule set (buildUponDefaultConfig = true in build.gradle.kts):
+# only the differences from the defaults are listed here. CI runs `./gradlew detekt`
+# on every pull request and fails on any finding. No baseline: fix or suppress with a
+# reason (@Suppress("RuleName") // why).
+
+build:
+  maxIssues: 0
+
+style:
+  MaxLineLength:
+    maxLineLength: 140
+    excludeCommentStatements: true
+  MagicNumber:
+    # Limits and durations in the SDK are named constants. Test code is full of literal
+    # expectations, and the sample app's layout code is full of dp values.
+    excludes: ['**/test/**', '**/sample/**']
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreEnums: true
+  ReturnCount:
+    # Validators (host, config) return a reason per failed check.
+    max: 8
+  LoopWithTooManyJumpStatements:
+    # The click-id parser skips malformed query pairs in several ways on purpose.
+    maxJumpCount: 3
+  UnusedPrivateMember:
+    active: true
+
+complexity:
+  LongMethod:
+    threshold: 80
+  CyclomaticComplexMethod:
+    # JSON conversion and the wire sanitizer are one `when` per key; splitting them hides the shape.
+    threshold: 20
+  ComplexCondition:
+    threshold: 5
+  LongParameterList:
+    # SfereConfig is a settings bag with defaults: constructor length is its purpose.
+    constructorThreshold: 12
+    functionThreshold: 7
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    thresholdInClasses: 20
+    thresholdInFiles: 25
+    ignorePrivate: true
+
+naming:
+  FunctionNaming:
+    # JUnit 4 test names read as sentences.
+    excludes: ['**/test/**']
+
+exceptions:
+  TooGenericExceptionCaught:
+    # The SDK must never throw into the host app; catching Throwable at the API edge is deliberate.
+    active: false
+  SwallowedException:
+    # Same reason: a bad stored value, a malformed URL or a logging failure is dropped on
+    # purpose and reported through SfereLog in debug mode, not rethrown.
+    active: false

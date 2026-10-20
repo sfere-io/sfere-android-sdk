@@ -1,0 +1,168 @@
+name: release
+
+# Publishes the SDK to GitHub Packages and cuts the GitHub release.
+#
+# Trigger: a `vX.Y.Z` (or `vX.Y.Z-beta.N`) tag on a commit that is on main. Creating
+# the tag is the privileged act: the "release-tags" ruleset lets only repository
+# admins create `v*` tags, and the `release` environment accepts only `v*` refs.
+# Required-reviewer gates are not available on this plan, so the tag ruleset is
+# the gate.
+#
+# Flow: the same CI gate every pull request passes (ci.yml, via workflow_call) ->
+# the tag must equal VERSION_NAME in gradle.properties and have a CHANGELOG section
+# -> publish io.sfere:analytics:VERSION to GitHub Packages -> download the
+# published AAR back from the registry and check it is byte-identical to the one
+# just built -> GitHub release with the AAR, sources jar and POM attached and the
+# CHANGELOG section as notes.
+#
+# A Maven version on GitHub Packages is immutable: publishing the same version
+# twice fails, which is the point. To ship a fix, bump VERSION_NAME and tag again.
+# Developer-facing instructions: docs/ci-cd.md.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  publish:
+    name: Publish to GitHub Packages
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: write # the GitHub release
+      packages: write # GitHub Packages (Maven)
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # "the tag is on main" is checked below
+
+      - name: Resolve and check the version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::Tag '$TAG' is not vX.Y.Z or vX.Y.Z-pre.N."; exit 1 ;;
+          esac
+          VERSION="${TAG#v}"
+          PROP="$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')"
+          if [ "$PROP" != "$VERSION" ]; then
+            echo "::error file=gradle.properties::Tag ${TAG} does not match VERSION_NAME=${PROP}. Set VERSION_NAME=${VERSION} on main first, then tag that commit."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${TAG} points at ${GITHUB_SHA::7}, which is not on main. Release only what went through a pull request."
+            exit 1
+          fi
+          if ! grep -q "^## \[${VERSION}\]" CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::CHANGELOG.md has no '## [${VERSION}]' section. Rename '## [Unreleased]' to it (with the date) before tagging."
+            exit 1
+          fi
+          case "$VERSION" in
+            *-*) PRERELEASE=true ;;
+            *) PRERELEASE=false ;;
+          esac
+          echo "VERSION=$VERSION"       >> "$GITHUB_ENV"
+          echo "TAG=$TAG"               >> "$GITHUB_ENV"
+          echo "PRERELEASE=$PRERELEASE" >> "$GITHUB_ENV"
+          echo "::notice::Releasing io.sfere:analytics:${VERSION} (prerelease=${PRERELEASE})."
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :sfere-analytics:publishReleasePublicationToGitHubPackagesRepository --no-daemon
+
+      # The registry's copy must be the bytes just built, and complete. Fetched back
+      # as a consumer would fetch it (Basic auth with a token that can read packages).
+      - name: Verify the published artifact against the registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE="https://maven.pkg.github.com/${GITHUB_REPOSITORY}/io/sfere/analytics/${VERSION}"
+          mkdir -p "$RUNNER_TEMP/registry"
+          for f in "analytics-${VERSION}.aar" "analytics-${VERSION}.pom" "analytics-${VERSION}-sources.jar" "analytics-${VERSION}.module"; do
+            curl -fsSL -u "token:${GITHUB_TOKEN}" -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
+              || { echo "::error::$f is not on the registry after the publish step."; exit 1; }
+          done
+          LOCAL_AAR="sfere-analytics/build/outputs/aar/sfere-analytics-release.aar"
+          LOCAL_SHA="$(sha256sum "$LOCAL_AAR" | cut -d' ' -f1)"
+          REMOTE_SHA="$(sha256sum "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" | cut -d' ' -f1)"
+          if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+            echo "::error::The AAR on the registry (${REMOTE_SHA}) is not the one built here (${LOCAL_SHA})."
+            exit 1
+          fi
+          unzip -p "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" classes.jar > "$RUNNER_TEMP/classes.jar"
+          unzip -l "$RUNNER_TEMP/classes.jar" | grep -q 'io/sfere/analytics/Sfere.class' \
+            || { echo "::error::The published classes.jar has no io.sfere.analytics.Sfere."; exit 1; }
+          grep -q "com.segment.analytics.kotlin" "$RUNNER_TEMP/registry/analytics-${VERSION}.pom" \
+            || { echo "::error::The published POM does not declare the base library dependency."; exit 1; }
+          echo "AAR_SHA256=$LOCAL_SHA" >> "$GITHUB_ENV"
+          echo "::notice::Registry copy of io.sfere:analytics:${VERSION} verified (sha256 ${LOCAL_SHA})."
+
+      - name: Release notes from the CHANGELOG
+        run: |
+          # The section for this version: from its heading to the next "## [" heading.
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          {
+            echo
+            echo "## Install"
+            echo
+            echo '```kotlin'
+            echo "implementation(\"io.sfere:analytics:${VERSION}\")"
+            echo '```'
+            echo
+            echo "Repository: \`https://maven.pkg.github.com/${GITHUB_REPOSITORY}\` (GitHub Packages, needs a token with \`read:packages\`; see the README)."
+            echo
+            echo "AAR sha256: \`${AAR_SHA256}\`"
+          } >> "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS=(--title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag)
+          if [ "$PRERELEASE" = "true" ]; then ARGS+=(--prerelease); fi
+          cp "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" "$RUNNER_TEMP/analytics-${VERSION}.aar"
+          gh release create "$TAG" "${ARGS[@]}" \
+            "$RUNNER_TEMP/analytics-${VERSION}.aar" \
+            "$RUNNER_TEMP/registry/analytics-${VERSION}-sources.jar" \
+            "$RUNNER_TEMP/registry/analytics-${VERSION}.pom"
+          {
+            echo "### Released io.sfere:analytics:${VERSION}"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Tag | \`${TAG}\` |"
+            echo "| Package | https://github.com/${GITHUB_REPOSITORY}/packages |"
+            echo "| Release | https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG} |"
+            echo "| AAR sha256 | \`${AAR_SHA256}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
