@@ -8,7 +8,7 @@ Ready for internal testing. Not published yet: publishing to GitHub Packages is 
 
 | Area | State |
 |---|---|
-| Android SDK | 28 unit tests pass and the sample app builds. **Not yet run on an emulator or device**, so `Sfere.setup(context)`, the SharedPreferences store and the Android lifecycle events still need a real run. |
+| Android SDK | 53 unit tests pass and the sample app builds. **Not yet run on an emulator or device**, so `Sfere.setup(context)`, the SharedPreferences store and the Android lifecycle events still need a real run. |
 | Same payload as iOS | The shared parity scenario matches field by field (`tools/parity.sh`). |
 | Staging | Not tested against the real ingestion endpoint yet. Everything so far runs against a local mock. |
 | CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan (once the token exists) and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
@@ -35,7 +35,7 @@ JVM tests, no emulator needed:
 JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sfere-analytics:testDebugUnitTest
 ```
 
-Expected: `BUILD SUCCESSFUL`, with 28 tests in `sfere-analytics/build/test-results/`.
+Expected: `BUILD SUCCESSFUL`, with 53 tests in `sfere-analytics/build/test-results/`.
 
 The rest of what CI checks, in one command (VS Code task *Android: quality checks*):
 

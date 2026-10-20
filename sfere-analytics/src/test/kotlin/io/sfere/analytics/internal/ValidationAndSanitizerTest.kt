@@ -39,6 +39,16 @@ class HostValidationTest {
     fun blankWriteKeyIsRejected() {
         assertTrue(validateConfig(SfereConfig(" ", "https://x.com"), false) is ConfigValidation.Invalid)
     }
+
+    @Test
+    fun aValidConfigCarriesItsHost() {
+        assertEquals(
+            ConfigValidation.Valid(SfereHost("https", "x.com")),
+            validateConfig(SfereConfig("key:secret", "HTTPS://x.com"), false),
+        )
+        assertTrue(validateHost("https://exa mple.com", allowInsecure = false) is HostValidation.Invalid)
+        assertTrue(validateHost(null, allowInsecure = false) is HostValidation.Invalid)
+    }
 }
 
 class WireSanitizerTest {
@@ -61,5 +71,30 @@ class WireSanitizerTest {
     fun keepsIntegrationsTheCallerSet() {
         val input = Json.parseToJsonElement("""{"integrations":{"Sfere":false},"context":{"clientIds":{"x":"y"}}}""").jsonObject
         assertEquals(Json.parseToJsonElement("""{"integrations":{"Sfere":false},"context":{}}""").jsonObject, WireSanitizer.sanitize(input))
+    }
+
+    @Test
+    fun dropsEmptyValuesAndBaseLibraryExtrasButKeepsRealOnes() {
+        val input = Json.parseToJsonElement(
+            """
+            {"metrics":[],"integrations":"x","userId":"u1","traits":{},"category":"","properties":{},
+             "context":{"referrer":{"type":"app"},"__eventOrigin":"x","device":{"id":"d","model":"m"},
+                        "clientIds":"not an object","os":{"name":"Android"}}}
+            """,
+        ).jsonObject
+        val expected = Json.parseToJsonElement(
+            """{"userId":"u1","context":{"device":{"model":"m"},"os":{"name":"Android"}}}""",
+        ).jsonObject
+        assertEquals(expected, WireSanitizer.sanitize(input))
+    }
+
+    @Test
+    fun keepsNonEmptyValuesAndUnexpectedShapesAsTheyAre() {
+        val input = Json.parseToJsonElement(
+            """{"traits":{"plan":"gold"},"category":"matches","properties":{"a":1},"context":{"device":"tablet"}}""",
+        ).jsonObject
+        assertEquals(input, WireSanitizer.sanitize(input))
+        val notAnObject = Json.parseToJsonElement("""{"context":"x"}""").jsonObject
+        assertEquals(notAnObject, WireSanitizer.sanitize(notAnObject))
     }
 }

@@ -39,4 +39,15 @@ class EcommerceTest {
         ).jsonObject
         assertEquals(expected, purchase.toJson())
     }
+
+    @Test
+    fun extraKeysNeverOverrideGa4FieldsAndNullsAreLeftOut() {
+        val item = SfereItem(itemId = "sku_1", extra = mapOf("item_id" to "other", "note" to null, "size" to "XL"))
+        assertEquals(Json.parseToJsonElement("""{"item_id":"sku_1","size":"XL"}"""), item.toJson())
+        val purchase = SferePurchase("order_1", "SAR", 10.0, emptyList(), extra = mapOf("currency" to "USD", "channel" to "app"))
+        assertEquals(
+            Json.parseToJsonElement("""{"transaction_id":"order_1","currency":"SAR","value":10.0,"items":[],"channel":"app"}"""),
+            purchase.toJson(),
+        )
+    }
 }

@@ -45,4 +45,15 @@ class EventNamesTest {
             EventNames.deepLinkProperties(input),
         )
     }
+
+    @Test
+    fun deepLinkReferrerComesFromSourceApplicationAndEmptyValuesAreDropped() {
+        val fromSource = JsonObject(mapOf("sourceApplication" to JsonPrimitive("com.example.app")))
+        assertEquals(
+            JsonObject(mapOf("referring_application" to JsonPrimitive("com.example.app"))),
+            EventNames.deepLinkProperties(fromSource),
+        )
+        val empty = JsonObject(mapOf("url" to JsonPrimitive("app://x"), "referrer" to JsonPrimitive("")))
+        assertEquals(JsonObject(mapOf("url" to JsonPrimitive("app://x"))), EventNames.deepLinkProperties(empty))
+    }
 }

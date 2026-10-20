@@ -38,6 +38,15 @@ class ClickIdParserTest {
     }
 
     @Test
+    fun queryParametersFollowUrlSearchParams() {
+        assertEquals(mapOf("gclid" to "A", "flag" to ""), ClickIdParser.queryParameters("gclid=A&&gclid=B&flag"))
+        assertEquals(mapOf("a" to "1"), ClickIdParser.queryParameters("app://p?a=1#b=2"))
+        assertEquals(emptyMap<String, String>(), ClickIdParser.queryParameters("app://p"))
+        assertEquals(emptyMap<String, String>(), ClickIdParser.queryParameters("no query here"))
+        assertEquals(ParsedClicks(emptyMap(), emptyMap(), null), ClickIdParser.parse(null, 1L))
+    }
+
+    @Test
     fun malformedPercentEncodingIsSkippedNotThrown() {
         val parsed = ClickIdParser.parse("sfereexample://p?gclid=%E0%A4%A&ttclid=ok", 1L)
         assertEquals(mapOf("ttclid" to "ok"), parsed.clientIds)

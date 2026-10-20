@@ -1,5 +1,6 @@
 package io.sfere.analytics
 
+import android.net.Uri
 import com.segment.analytics.kotlin.core.Analytics
 import com.segment.analytics.kotlin.core.Configuration
 import com.segment.analytics.kotlin.core.Settings
@@ -238,6 +239,43 @@ class TransportTest {
         Thread.sleep(2_500)
         assertEquals(0, server.requestCount)
         assertEquals("false", h.store.getString("sfere_enabled"))
+    }
+
+    @Test
+    fun theOtherPublicCallsReachTheUpload() {
+        val h = harness(flushAt = 7, flushInterval = 3600)
+        server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+        val longName = "a".repeat(129)
+
+        assertTrue(h.sfere.isEnabled)
+        h.sfere.setEnabled(true)
+        assertNull("enabling clears the stored opt-out", h.store.getString("sfere_enabled"))
+        h.sfere.identify(null, mapOf("plan" to "gold")) // anonymous traits only
+        h.sfere.group("club_1")
+        h.sfere.alias("user_9")
+        h.sfere.screen("Match Center", mapOf("match_id" to 42), category = "matches")
+        h.sfere.track("") // ignored: no name
+        h.sfere.track("Not Snake Case") // sent; debug mode warns about the name
+        h.sfere.track(longName) // sent; the endpoint may truncate it
+        h.sfere.openUrl(null as Uri?) // nothing to record
+        // + session_started = 7 events
+
+        val request = assertNotNull(server.takeRequest(15, TimeUnit.SECONDS))
+        val batch = body(request)["batch"]!!.jsonArray.map { it.jsonObject }
+        // The base library processes events concurrently, so the batch order is not the call order.
+        assertEquals(7, batch.size)
+        assertEquals(
+            setOf("session_started", "identify", "group", "alias", "screen", "Not Snake Case", longName),
+            batch.map { it.str("event") ?: it.str("type") }.toSet(),
+        )
+        val screen = batch.single { it.str("type") == "screen" }
+        assertEquals("matches", screen.str("category"))
+        assertEquals("club_1", batch.single { it.str("type") == "group" }.str("groupId"))
+        assertNotNull(h.sfere.userId())
+        val anonymousId = assertNotNull(h.sfere.anonymousId())
+
+        h.sfere.reset() // logout: a new anonymous id
+        waitUntil { h.sfere.anonymousId() != anonymousId }
     }
 
     private fun <T> assertNotNull(value: T?): T = assertNotNull(null, value)
