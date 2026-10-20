@@ -80,6 +80,16 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
+// SonarQube: the Gradle scanner reads the Android sources and class files itself; the test
+// and coverage reports come from createDebugUnitTestCoverageReport (CI runs it first).
+sonar {
+    properties {
+        property("sonar.junit.reportPaths", "${layout.buildDirectory.get()}/test-results/testDebugUnitTest")
+        property("sonar.coverage.jacoco.xmlReportPaths", "${layout.buildDirectory.get()}/reports/coverage/test/debug/report.xml")
+        property("sonar.androidVariant", "debug")
+    }
+}
+
 // Publishing. Beta: GitHub Packages, private. 1.0.0: Maven Central (same coordinates).
 // Credentials come from Gradle properties (gpr.user / gpr.token, in ~/.gradle/gradle.properties,
 // never in the repo) or, in GitHub Actions, from GITHUB_ACTOR / GITHUB_TOKEN.

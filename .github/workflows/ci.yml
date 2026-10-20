@@ -11,7 +11,7 @@ name: ci
 #   Static analysis   detekt + Android Lint (every warning is an error)
 #   API contract      the public API dump, the version/CHANGELOG rules, no vendor names
 #   Tests & coverage  the JVM suite with JaCoCo coverage
-#   SonarQube         SonarQube Cloud scan of that coverage (skipped without SONAR_TOKEN)
+#   SonarQube         SonarQube Cloud analysis (Gradle scanner) of that coverage (skipped without SONAR_TOKEN)
 #   Build             release AAR, sample APK, and a local Maven publish of the artifact
 #
 # Not here: GitHub's dependency-review action needs Advanced Security on a private
@@ -249,11 +249,12 @@ jobs:
             sfere-analytics/build/reports/coverage/test/debug/report.xml
           retention-days: 14
 
-  # SonarQube Cloud: static analysis plus the coverage from `test`. The scan needs
-  # SONAR_TOKEN (repository secret). Without it (Dependabot runs, forks, or before
-  # the SonarQube project exists) the job passes with a note, so the required
-  # "SonarQube" check stays green. With it, a failed quality gate fails the job
-  # (sonar.qualitygate.wait in sonar-project.properties).
+  # SonarQube Cloud: static analysis plus the coverage from `test`, through the
+  # SonarQube Gradle scanner (`./gradlew sonar`, keys in build.gradle.kts), the
+  # setup SonarQube recommends for Gradle projects. The scan needs SONAR_TOKEN
+  # (repository secret). Without it (Dependabot runs, forks) the job passes with a
+  # note, so the required "SonarQube" check stays green. With it, a failed quality
+  # gate fails the job (sonar.qualitygate.wait).
   sonar:
     name: SonarQube
     needs: test
@@ -275,18 +276,23 @@ jobs:
         if: env.SONAR_TOKEN != ''
         with:
           cache-read-only: true
-      - name: Compile (the analyzer reads the class files)
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: env.SONAR_TOKEN != ''
-        run: ./gradlew :sfere-analytics:compileDebugKotlin :sfere-analytics:compileDebugUnitTestKotlin --no-daemon
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: env.SONAR_TOKEN != ''
         with:
           name: test-results
           path: sfere-analytics/build/
-      - uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+      - name: SonarQube analysis
         if: env.SONAR_TOKEN != ''
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        # The sonar task compiles what it needs; the test and coverage reports were restored above.
+        run: ./gradlew sonar --no-daemon
       - name: Sonar skipped
         if: env.SONAR_TOKEN == ''
         run: echo "SONAR_TOKEN is not set; SonarQube Cloud analysis was skipped." >> "$GITHUB_STEP_SUMMARY"

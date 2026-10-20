@@ -7,6 +7,20 @@ plugins {
     // The public API of :sfere-analytics is recorded in sfere-analytics/api/sfere-analytics.api.
     // `apiCheck` fails when the code and the dump disagree; `apiDump` updates the dump.
     alias(libs.plugins.binary.compatibility.validator)
+    // SonarQube Cloud analysis: `./gradlew sonar` (CI's SonarQube job, with SONAR_TOKEN).
+    // Keys from https://sonarcloud.io/project/configuration/GitHubActions?id=sfere-io_sfere-android-sdk
+    alias(libs.plugins.sonarqube)
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "sfere-io_sfere-android-sdk")
+        property("sonar.organization", "sfere-io")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.sourceEncoding", "UTF-8")
+        // Fail the job when the quality gate fails.
+        property("sonar.qualitygate.wait", "true")
+    }
 }
 
 apiValidation {

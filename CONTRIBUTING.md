@@ -40,7 +40,7 @@ Enforced by the `protect-main` ruleset on `main`:
 | Bypass | None — the rules apply to admins too |
 
 Sensitive paths (`.github/`, `.githooks/`, the Gradle files, `sfere-analytics/api/`,
-`fixtures/`, `config/`, `sonar-project.properties`, the policy docs) require
+`fixtures/`, `config/`, the policy docs) require
 approval from an SDK maintainer (@mabumusa1 or @KaramYaaqba).
 
 What the checks gate, and how to run them locally, is in [docs/ci-cd.md](docs/ci-cd.md).

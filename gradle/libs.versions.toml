@@ -10,6 +10,8 @@ okhttp = "4.12.0"
 ktlint-gradle = "12.3.0"
 detekt = "1.23.8"
 binary-compatibility-validator = "0.17.0"
+# SonarQube Cloud scanner for Gradle, the setup SonarQube recommends for Gradle projects.
+sonarqube = "7.5.0.8588"
 
 [libraries]
 segment-analytics-android = { module = "com.segment.analytics.kotlin:android", version.ref = "segment-analytics" }
@@ -26,3 +28,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 binary-compatibility-validator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binary-compatibility-validator" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }

@@ -34,6 +34,11 @@ android {
     }
 }
 
+// The sample is test tooling, not the product: left out of the SonarQube analysis.
+sonar {
+    isSkipProject = true
+}
+
 kotlin {
     jvmToolchain(17)
     compilerOptions {

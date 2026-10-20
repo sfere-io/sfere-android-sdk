@@ -19,7 +19,7 @@ The Sfere Android SDK. It collects first-party fan events in Android apps and se
 | `.githooks/pre-commit` | ktlint on the staged Kotlin, `apiDump` when SDK sources are staged, vendor-name check. Installed with `git config core.hooksPath .githooks`. |
 | `sfere-analytics/api/sfere-analytics.api` | The public API dump (binary-compatibility-validator). `apiCheck` is the gate, `apiDump` the only writer. |
 | `config/detekt/detekt.yml` | detekt rules on top of the defaults; zero findings allowed, no baseline. |
-| `sonar-project.properties` | SonarQube Cloud project `sfere-io_sfere-android-sdk`; the scan runs only when `SONAR_TOKEN` exists. |
+| `build.gradle.kts` (`sonar {}`) | SonarQube Cloud project `sfere-io_sfere-android-sdk`, organization `sfere-io`, through the SonarQube Gradle scanner (`./gradlew sonar`); CI runs it only when `SONAR_TOKEN` exists (set 2026-10-20). |
 | `sfere-analytics/` | Module `:sfere-analytics` (`io.sfere:analytics`), sources in `src/main/kotlin/io/sfere/analytics/` (public API at the top level, everything else under `internal/`) |
 | `sfere-analytics/src/test/` | JVM tests (JUnit 4 + MockWebServer, no Robolectric). `TransportTest.kt` runs the real analytics-kotlin core |
 | `sample/` | Sample app (`:sample`, plain Android views, no UI libraries). Debug builds allow cleartext to `10.0.2.2` only. Default host `http://10.0.2.2:4320`, deep-link scheme `sfereexample://` |

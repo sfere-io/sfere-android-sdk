@@ -27,7 +27,7 @@ on the job that needs more.
 | **Static analysis** | `./gradlew detekt`, then `:sfere-analytics:lintRelease :sample:lintDebug` | any detekt finding (`config/detekt/detekt.yml`, zero issues allowed, no baseline) or any Android Lint warning (`warningsAsErrors`). Reports are uploaded as the `analysis-reports` artifact |
 | **API contract** | vendor-name grep over every tracked file; `:sfere-analytics:apiCheck`; on PRs the public API diff against the base goes into the job summary; the version and CHANGELOG rules | the ingestion vendor is named anywhere; the committed `sfere-analytics/api/sfere-analytics.api` is stale (fix: `./gradlew :sfere-analytics:apiDump`, the diff is in the summary); the SDK changed while `VERSION_NAME` is already tagged; the SDK changed without a `CHANGELOG.md` change (label `skip-changelog` to waive) |
 | **Tests & coverage** | `:sfere-analytics:createDebugUnitTestCoverageReport` (runs `testDebugUnitTest`, then JaCoCo) | a test fails. The summary shows the counts and the line/branch coverage; results and the JaCoCo XML are the `test-results` artifact |
-| **SonarQube** | compiles, restores `test-results`, runs `SonarSource/sonarqube-scan-action` with `sonar-project.properties` | the quality gate fails (`sonar.qualitygate.wait=true`). **Skipped with a note when `SONAR_TOKEN` is not set** (Dependabot runs, or before the SonarQube Cloud project exists), so the required check still passes |
+| **SonarQube** | restores `test-results`, runs `./gradlew sonar` (the SonarQube Gradle scanner; keys and properties in `build.gradle.kts` and `sfere-analytics/build.gradle.kts`, the sample skipped) | the quality gate fails (`sonar.qualitygate.wait=true`). **Skipped with a note when `SONAR_TOKEN` is not set** (Dependabot runs), so the required check still passes |
 | **Build** | `:sfere-analytics:assembleRelease :sample:assembleDebug`, then `publishReleasePublicationToMavenLocal` and an inspection of the published files | the AAR, POM, sources jar or Gradle module file is missing from `~/.m2`, the AAR has no `classes.jar` / `io.sfere.analytics.Sfere` / consumer ProGuard rules, or the POM does not carry the base library as a dependency. The AAR and the sample APK are the `sfere-analytics` artifact |
 
 ### `dependency-graph.yml`
@@ -118,9 +118,8 @@ Repository rulesets, all with **no bypass actors** (admins included):
 
 Repository settings that go with them: squash merge only, branches deleted on
 merge, Dependabot alerts and security updates on, Actions limited to GitHub-owned
-and verified creators plus `gradle/actions`, `SonarSource/sonarqube-scan-action`
-and `actions/*`, default `GITHUB_TOKEN` read-only, Actions may not create or
-approve pull requests.
+and verified creators plus `gradle/*` and `actions/*`, default `GITHUB_TOKEN`
+read-only, Actions may not create or approve pull requests.
 
 `.github/CODEOWNERS` lists the sensitive paths (workflows, hooks, Gradle files, the
 API dump, the shared fixtures, the Sonar and detekt configs, the policy docs); a
@@ -145,7 +144,7 @@ JDK 17 is required (`jvmToolchain(17)`). On this project's Macs:
 
 | Name | Where | Used by |
 |---|---|---|
-| `SONAR_TOKEN` | repository secret | the `SonarQube` job; create the project `sfere-io_sfere-android-sdk` at sonarcloud.io first, then add the token. Until then the job passes with a note |
+| `SONAR_TOKEN` | repository secret (set 2026-10-20) | the `SonarQube` job. SonarQube Cloud project `sfere-io_sfere-android-sdk` in organization `sfere-io`: https://sonarcloud.io/project/overview?id=sfere-io_sfere-android-sdk |
 | `GITHUB_TOKEN` | automatic | publishing to GitHub Packages, the GitHub release, the dependency submission |
 
 No deploy keys, no personal tokens, no cloud credentials: the SDK ships to GitHub
