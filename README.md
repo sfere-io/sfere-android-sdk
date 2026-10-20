@@ -1,5 +1,19 @@
 # Sfere Analytics for Android
 
+[![CI](https://github.com/sfere-io/sfere-android-sdk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sfere-io/sfere-android-sdk/actions/workflows/ci.yml)
+[![Release](https://github.com/sfere-io/sfere-android-sdk/actions/workflows/release.yml/badge.svg)](https://github.com/sfere-io/sfere-android-sdk/actions/workflows/release.yml)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=alert_status&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=coverage&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=ncloc&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=duplicated_lines_density&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=reliability_rating&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=security_rating&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=sqale_rating&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Reliability Issues](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=software_quality_reliability_issues&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Security Issues](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=software_quality_security_issues&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Maintainability Issues](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=software_quality_maintainability_issues&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=sfere-io_sfere-android-sdk&metric=sqale_index&token=37c6e843a2e0fb9b4ba088990d83113f4c33b2a8)](https://sonarcloud.io/summary/new_code?id=sfere-io_sfere-android-sdk)
+
 Collects first-party fan events in your Android app and sends them to Sfere. The payload and the event names are the same as Sfere's browser and server SDKs.
 
 - Artifact: `io.sfere:analytics`

@@ -145,6 +145,9 @@ download cannot enter a build (this is also what SonarQube's `kotlin:S6474` and
     :sfere-analytics:publishReleasePublicationToMavenLocal :sfere-analytics:sonarResolver
   ```
 
+  Run it with a **fresh Gradle home** (`GRADLE_USER_HOME=$(mktemp -d)`), so Gradle
+  downloads every file the way a clean CI runner does. A warm cache skips metadata
+  files (`.module`, `.pom`) it already has, and the runner then fails on them.
   Review the diff before committing: a new entry must be a dependency you meant to
   add or upgrade.
 - Platform-specific build tools (the AAPT2 binaries) are trusted by pattern in the
