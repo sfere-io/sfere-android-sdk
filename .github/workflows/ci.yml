@@ -291,8 +291,9 @@ jobs:
         if: env.SONAR_TOKEN != ''
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
-        # The sonar task compiles what it needs; the test and coverage reports were restored above.
-        run: ./gradlew sonar --no-daemon
+        # Lint runs first so its report feeds the analysis; the sonar task compiles what it
+        # needs, and the test and coverage reports were restored above.
+        run: ./gradlew :sfere-analytics:lintRelease sonar --no-daemon
       - name: Sonar skipped
         if: env.SONAR_TOKEN == ''
         run: echo "SONAR_TOKEN is not set; SonarQube Cloud analysis was skipped." >> "$GITHUB_STEP_SUMMARY"

@@ -86,6 +86,7 @@ sonar {
     properties {
         property("sonar.junit.reportPaths", "${layout.buildDirectory.get()}/test-results/testDebugUnitTest")
         property("sonar.coverage.jacoco.xmlReportPaths", "${layout.buildDirectory.get()}/reports/coverage/test/debug/report.xml")
+        property("sonar.androidLint.reportPaths", "${layout.buildDirectory.get()}/reports/lint-results-release.xml")
         property("sonar.androidVariant", "debug")
     }
 }

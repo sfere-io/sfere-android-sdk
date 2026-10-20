@@ -24,4 +24,5 @@ All commands run from the repository root with JDK 17 (`TESTING.md`).
 - [ ] Public API change: `sfere-analytics/api/sfere-analytics.api` regenerated and reviewed
 - [ ] No vendor name for the ingestion platform anywhere (say "ingestion endpoint")
 - [ ] No secrets or real write keys in the diff (`.env` is git-ignored; tests use fakes)
+- [ ] Dependency change: `gradle/verification-metadata.xml` regenerated (`docs/ci-cd.md`, "Dependency verification") and its diff reviewed
 - [ ] CI or release changes (`.github/**`, `.githooks/**`, the `sonar {}` blocks) come with a `docs/ci-cd.md` update

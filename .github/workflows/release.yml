@@ -105,7 +105,7 @@ jobs:
           BASE="https://maven.pkg.github.com/${GITHUB_REPOSITORY}/io/sfere/analytics/${VERSION}"
           mkdir -p "$RUNNER_TEMP/registry"
           for f in "analytics-${VERSION}.aar" "analytics-${VERSION}.pom" "analytics-${VERSION}-sources.jar" "analytics-${VERSION}.module"; do
-            curl -fsSL -u "token:${GITHUB_TOKEN}" -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
+            curl -fsSL --proto '=https' -u "token:${GITHUB_TOKEN}" -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
               || { echo "::error::$f is not on the registry after the publish step."; exit 1; }
           done
           LOCAL_AAR="sfere-analytics/build/outputs/aar/sfere-analytics-release.aar"

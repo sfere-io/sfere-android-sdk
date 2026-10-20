@@ -46,6 +46,7 @@ All Gradle commands need `JAVA_HOME=$(/usr/libexec/java_home -v 17)`.
 
 - `local.properties` (git-ignored) holds `sdk.dir=~/Library/Android/sdk`. On another machine `ANDROID_HOME` works too; CI uses the runner's SDK.
 - **Version:** `VERSION_NAME` in `gradle.properties` is the only place the SDK version lives (`0.1.0-beta.1`). It becomes `context.library.version`, the Maven version and the tag `vVERSION_NAME`. A tagged version is immutable: bump it before changing the SDK again (CI's "API contract" job fails otherwise), and add the `CHANGELOG.md` entry under `## [Unreleased]`.
+- **Dependency verification:** `gradle/verification-metadata.xml` pins a sha256 for every artifact Gradle downloads; a new or bumped dependency fails every Gradle task until it is regenerated (command in `docs/ci-cd.md`, "Dependency verification"). Dependabot PRs need that commit.
 - **Warnings are errors:** Kotlin `allWarningsAsErrors`, Android Lint `warningsAsErrors`, detekt `maxIssues: 0`, ktlint `android_studio` style (`.editorconfig`). Fix the cause; suppress only with a reason in a comment.
 - `gradle.properties` caps Gradle memory: 2 GB heap, 2 workers. Kotlin compiles inside the Gradle daemon (`kotlin.compiler.execution.strategy=in-process`), so there is no Kotlin daemon to clean up; never kill one by name. This Mac has crashed from memory pressure before, so keep the caps. Run builds one after another, and stop the daemons when done.
 

@@ -125,6 +125,32 @@ read-only, Actions may not create or approve pull requests.
 API dump, the shared fixtures, the Sonar and detekt configs, the policy docs); a
 maintainer must approve changes to them.
 
+## Dependency verification
+
+`gradle/verification-metadata.xml` holds a sha256 checksum for every dependency,
+plugin and build tool Gradle downloads. Gradle refuses an artifact whose checksum
+is missing or different, on every machine and in CI, so a tampered or substituted
+download cannot enter a build (this is also what SonarQube's `kotlin:S6474` and
+`text:S8569` rules ask for). Consequences:
+
+- A dependency bump, Dependabot's included, fails every Gradle job until the file
+  is regenerated. On the PR branch run the command below and commit the file; the
+  diff shows exactly which artifacts changed.
+- Regenerate with the full task set CI runs, so no configuration is left out:
+
+  ```sh
+  ./gradlew --write-verification-metadata sha256 ktlintCheck detekt :sfere-analytics:apiCheck \
+    :sfere-analytics:lintRelease :sample:lintDebug :sfere-analytics:createDebugUnitTestCoverageReport \
+    :sfere-analytics:assembleRelease :sample:assembleDebug \
+    :sfere-analytics:publishReleasePublicationToMavenLocal :sfere-analytics:sonarResolver
+  ```
+
+  Review the diff before committing: a new entry must be a dependency you meant to
+  add or upgrade.
+- Platform-specific build tools (the AAPT2 binaries) are trusted by pattern in the
+  `<trusted-artifacts>` block, because a Mac resolves a different file from the
+  Linux runner. Everything else is pinned.
+
 ## Local counterparts
 
 | Gate | Locally |
