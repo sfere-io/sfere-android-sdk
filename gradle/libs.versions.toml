@@ -5,7 +5,7 @@ segment-analytics = "1.26.0"
 kotlinx-serialization-json = "1.5.1"
 kotlinx-coroutines = "1.7.1"
 junit = "4.13.2"
-okhttp = "4.12.0"
+okhttp = "5.5.0"
 # Quality gates (CI runs them on every pull request; see docs/ci-cd.md).
 ktlint-gradle = "12.3.0"
 detekt = "1.23.8"
