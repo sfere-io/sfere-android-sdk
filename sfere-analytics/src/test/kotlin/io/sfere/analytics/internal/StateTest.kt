@@ -50,6 +50,14 @@ class SessionTrackerTest {
     }
 
     @Test
+    fun aCorruptStoredSessionStartsANewOne() {
+        for (stored in listOf("garbage", "x:y", "5:x", "1:2:3")) {
+            store.putString("sfere_session", stored)
+            assertTrue("stored \"$stored\"", SessionTracker(store, clock, timeoutMs).tick().isNew)
+        }
+    }
+
+    @Test
     fun resetStartsANewSessionOnTheNextEvent() {
         val tracker = SessionTracker(store, clock, timeoutMs)
         tracker.tick()
@@ -90,6 +98,22 @@ class ClickIdStoreTest {
         reloaded.clear()
         assertEquals(ClickIdStore.Snapshot(), ClickIdStore(store).snapshot())
     }
+
+    @Test
+    fun aCorruptOrPartialStoredValueIsReadSafely() {
+        store.putString("sfere_click_ids", "not json")
+        assertEquals(ClickIdStore.Snapshot(), ClickIdStore(store).snapshot())
+        store.putString("sfere_click_ids", """{"ids":{"gclid":"G","bad":{}},"fbclid":null}""")
+        assertEquals(ClickIdStore.Snapshot(clientIds = mapOf("gclid" to "G")), ClickIdStore(store).snapshot())
+    }
+
+    @Test
+    fun aLinkWithoutClicksChangesNothing() {
+        val clicks = ClickIdStore(store)
+        clicks.merge(ClickIdParser.parse("app://p?unrelated=1", 1))
+        assertEquals(ClickIdStore.Snapshot(), clicks.snapshot())
+        assertNull(store.getString("sfere_click_ids"))
+    }
 }
 
 class ConsentStoreTest {
@@ -101,5 +125,35 @@ class ConsentStoreTest {
         assertEquals(mapOf("analytics" to true, "advertising" to false), ConsentStore(store).get())
         ConsentStore(store).set(null)
         assertNull(ConsentStore(store).get())
+    }
+
+    @Test
+    fun aCorruptStoredValueIsUnknownAndNonBooleansAreSkipped() {
+        val store = InMemoryKeyValueStore()
+        store.putString("sfere_consent", "not json")
+        assertNull(ConsentStore(store).get())
+        store.putString("sfere_consent", """{"analytics":true,"advertising":"yes","other":{}}""")
+        assertEquals(mapOf("analytics" to true), ConsentStore(store).get())
+    }
+}
+
+class SharedPreferencesKeyValueStoreTest {
+    @Test
+    fun readsWritesAndRemovesThroughSharedPreferences() {
+        val prefs = FakeSharedPreferences()
+        val store = SharedPreferencesKeyValueStore(FakeContext(prefs), "key:secret")
+        assertNull(store.getString("a"))
+        store.putString("a", "1")
+        assertEquals("1", store.getString("a"))
+        store.putString("a", null)
+        assertNull(store.getString("a"))
+        assertTrue(prefs.name!!.startsWith("io.sfere.analytics."))
+    }
+
+    @Test
+    fun storageFailuresNeverReachTheApp() {
+        val store = SharedPreferencesKeyValueStore(FakeContext(FakeSharedPreferences(failing = true)), "key:secret")
+        store.putString("a", "1")
+        assertNull(store.getString("a"))
     }
 }
