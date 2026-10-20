@@ -1,15 +1,15 @@
 [versions]
 agp = "8.7.3"
-kotlin = "2.0.21"
+kotlin = "2.4.21"
 segment-analytics = "1.26.0"
-kotlinx-serialization-json = "1.5.1"
-kotlinx-coroutines = "1.7.1"
+kotlinx-serialization-json = "1.11.0"
+kotlinx-coroutines = "1.11.0"
 junit = "4.13.2"
 okhttp = "4.12.0"
 # Quality gates (CI runs them on every pull request; see docs/ci-cd.md).
 ktlint-gradle = "12.3.0"
 detekt = "1.23.8"
-binary-compatibility-validator = "0.17.0"
+binary-compatibility-validator = "0.18.2"
 # SonarQube Cloud scanner for Gradle, the setup SonarQube recommends for Gradle projects.
 sonarqube = "7.5.0.8588"
 
