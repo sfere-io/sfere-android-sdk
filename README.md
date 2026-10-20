@@ -8,7 +8,7 @@ Collects first-party fan events in your Android app and sends them to Sfere. The
 
 ## Install
 
-> **Not yet published.** Publishing is configured, but the first beta (`0.1.0-beta.1`) has not been tagged yet. The steps below are the install path for the beta; they work as soon as the first release exists at <https://github.com/fanfinity/sfere-android-sdk/packages>.
+> **Not yet published.** Publishing is configured, but the first beta (`0.1.0-beta.1`) has not been tagged yet. The steps below are the install path for the beta; they work as soon as the first release exists at <https://github.com/sfere-io/sfere-android-sdk/packages>.
 
 During the beta the SDK is published privately to GitHub Packages. You need a GitHub account with read access to this repository and a personal access token with the `read:packages` scope. Put the token in your own `~/.gradle/gradle.properties`, never in the app's repository:
 
@@ -25,7 +25,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://maven.pkg.github.com/fanfinity/sfere-android-sdk") {
+        maven("https://maven.pkg.github.com/sfere-io/sfere-android-sdk") {
             credentials {
                 username = providers.gradleProperty("gpr.user").orNull
                 password = providers.gradleProperty("gpr.token").orNull // a token with read:packages
@@ -40,7 +40,7 @@ dependencies {
 }
 ```
 
-Each release is listed at <https://github.com/fanfinity/sfere-android-sdk/releases> with its changelog and the AAR's sha256. At 1.0.0 the same coordinates move to Maven Central and the token goes away.
+Each release is listed at <https://github.com/sfere-io/sfere-android-sdk/releases> with its changelog and the AAR's sha256. At 1.0.0 the same coordinates move to Maven Central and the token goes away.
 
 ## Set up
 

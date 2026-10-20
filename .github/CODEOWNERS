@@ -1,4 +1,4 @@
-# Code owners for fanfinity/sfere-android-sdk.
+# Code owners for sfere-io/sfere-android-sdk.
 #
 # Format: <pattern>   <owner> [<owner> ...]
 # Last matching pattern wins. Required review from code owners is enforced by the
@@ -7,7 +7,7 @@
 # ruleset's one approval from any collaborator.
 #
 # The owners are the SDK maintainers. When a GitHub team exists for them, replace
-# the logins with the team (@fanfinity/<team>), as fanfinity/apis does.
+# the logins with the team (@sfere-io/<team>), as sfere-io/apis does.
 
 # Sensitive paths: what CI runs, how the artifact is built and published, and
 # what every event carries on the wire. A maintainer approves these.

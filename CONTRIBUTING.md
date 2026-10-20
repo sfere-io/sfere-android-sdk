@@ -1,4 +1,4 @@
-# Contributing to fanfinity/sfere-android-sdk
+# Contributing to sfere-io/sfere-android-sdk
 
 ## Ground rules
 

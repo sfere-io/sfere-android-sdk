@@ -96,7 +96,7 @@ publishing {
             pom {
                 name.set("Sfere Analytics for Android")
                 description.set("Collects first-party fan events in Android apps and sends them to the Sfere ingestion endpoint.")
-                url.set("https://github.com/fanfinity/sfere-android-sdk")
+                url.set("https://github.com/sfere-io/sfere-android-sdk")
                 organization {
                     name.set("Sfere")
                     url.set("https://sfere.io")
@@ -109,9 +109,9 @@ publishing {
                     }
                 }
                 scm {
-                    url.set("https://github.com/fanfinity/sfere-android-sdk")
-                    connection.set("scm:git:https://github.com/fanfinity/sfere-android-sdk.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/fanfinity/sfere-android-sdk.git")
+                    url.set("https://github.com/sfere-io/sfere-android-sdk")
+                    connection.set("scm:git:https://github.com/sfere-io/sfere-android-sdk.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/sfere-io/sfere-android-sdk.git")
                 }
             }
         }
@@ -119,7 +119,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/fanfinity/sfere-android-sdk")
+            url = uri("https://maven.pkg.github.com/sfere-io/sfere-android-sdk")
             credentials {
                 username = providers.gradleProperty("gpr.user")
                     .orElse(providers.environmentVariable("GITHUB_ACTOR"))

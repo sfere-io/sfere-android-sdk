@@ -1,7 +1,7 @@
 # CI/CD for the Sfere Android SDK
 
 How the code is protected on the way to `main`, and how a version reaches app
-developers. The model is the one `fanfinity/apis` uses, translated from PHP to
+developers. The model is the one `sfere-io/apis` uses, translated from PHP to
 Android: every pull request passes the same named checks, `main` is protected by
 rulesets with no bypass, Dependabot keeps dependencies and actions current, and a
 release is a tag that only an admin can create.
@@ -79,8 +79,8 @@ Steps, in order:
    Only admins can create `v*` tags (the `release-tags` ruleset), and no one can
    move or delete a tag (`protect-tags`).
 3. Watch the `release` run. When it is green, the package is at
-   https://github.com/fanfinity/sfere-android-sdk/packages and the release at
-   https://github.com/fanfinity/sfere-android-sdk/releases.
+   https://github.com/sfere-io/sfere-android-sdk/packages and the release at
+   https://github.com/sfere-io/sfere-android-sdk/releases.
 4. If anything after the publish step failed, the version is on the registry
    already: fix forward with a new `VERSION_NAME`, never by re-tagging.
 
@@ -145,7 +145,7 @@ JDK 17 is required (`jvmToolchain(17)`). On this project's Macs:
 
 | Name | Where | Used by |
 |---|---|---|
-| `SONAR_TOKEN` | repository secret | the `SonarQube` job; create the project `fanfinity_sfere-android-sdk` at sonarcloud.io first, then add the token. Until then the job passes with a note |
+| `SONAR_TOKEN` | repository secret | the `SonarQube` job; create the project `sfere-io_sfere-android-sdk` at sonarcloud.io first, then add the token. Until then the job passes with a note |
 | `GITHUB_TOKEN` | automatic | publishing to GitHub Packages, the GitHub release, the dependency submission |
 
 No deploy keys, no personal tokens, no cloud credentials: the SDK ships to GitHub
@@ -155,7 +155,7 @@ Packages, not to a server.
 
 - **Cross-repo parity with the iOS SDK.** `tools/parity.sh` needs both repositories
   side by side and a Mac with Xcode (plan step F1). Until a macOS job with access to
-  `fanfinity/sfere-ios-sdk` exists, run it locally before merging a change to what
+  `sfere-io/sfere-ios-sdk` exists, run it locally before merging a change to what
   the SDK sends.
 - **Emulator flows (Espresso).** There are no `androidTest` sources yet (plan step
   D3). When they exist, add an emulator job on `main` or nightly, as decision Q7 says.

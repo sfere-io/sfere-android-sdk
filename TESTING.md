@@ -1,6 +1,6 @@
 # Testing the Sfere Android SDK
 
-For developers and testers. To add the SDK to an app, see [`README.md`](README.md). The iOS SDK lives in its own repository, [`fanfinity/sfere-ios-sdk`](https://github.com/fanfinity/sfere-ios-sdk), and sends the same payload.
+For developers and testers. To add the SDK to an app, see [`README.md`](README.md). The iOS SDK lives in its own repository, [`sfere-io/sfere-ios-sdk`](https://github.com/sfere-io/sfere-ios-sdk), and sends the same payload.
 
 ## Status (2026-10-20)
 

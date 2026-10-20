@@ -7,6 +7,8 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
+## [0.1.0-beta.1] - 2026-10-20
+
 ### Added
 
 - First beta of the SDK on the base library (analytics-kotlin 1.26.0): `Sfere.setup`,
@@ -17,6 +19,7 @@ the tagged version as the GitHub release notes, so write entries for app develop
 - Consent (`context.consent`) and opt-out, both remembered across launches.
 - Uploads to `POST {host}/v1/batch/b` only, with Basic auth; no `_metadata`,
   no empty `integrations`, no `context.instanceId`, no `context.device.id`.
-- Publishing to GitHub Packages (`maven.pkg.github.com/fanfinity/sfere-android-sdk`)
+- Publishing to GitHub Packages (`maven.pkg.github.com/sfere-io/sfere-android-sdk`, the organization
+  renamed from fanfinity to sfere-io on 2026-10-20)
   with the sources jar; CI gates on every pull request (style, static analysis,
   public API dump, tests with coverage, build).

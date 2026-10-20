@@ -2,10 +2,10 @@
 
 The Sfere Android SDK. It collects first-party fan events in Android apps and sends them to the Sfere ingestion endpoint. It wraps Segment's open-source `analytics-kotlin` unmodified, the same library the ingestion platform uses. Sfere's behaviour is added on top as plugins.
 
-- **Sibling repo:** the iOS SDK is `fanfinity/sfere-ios-sdk`, checked out at `~/Desktop/Projects/sfere-ios-sdk`. Until 2026-10-18 both lived in one repo, `fanfinity/sfere-mobile-sdks`, which is now deleted from GitHub. The two were split because apps integrate them differently. The old local folder `~/Desktop/Projects/sfere-mobile-sdks` was deleted too.
-- **Payload contract:** `docs/WIRE-CONTRACT.md` and `docs/EVENTS.md` in the private repo `fanfinity/sfere-sdk`. Read them with `gh api 'repos/fanfinity/sfere-sdk/contents/<path>' -H 'Accept: application/vnd.github.raw'`; `gh repo clone` fails on this machine.
-- **Plan and next steps:** `docs/mobile/sfere-mobile-sdks-plan.html` and `docs/mobile/sfere-mobile-sdks-next-steps.html` in `fanfinity/sfere-sdk`. They cover both platforms. Read them with `gh api 'repos/fanfinity/sfere-sdk/contents/docs/mobile/<file>' -H 'Accept: application/vnd.github.raw'`. Change them through a docs PR in that repo. The vendor name of the ingestion platform never appears there. Read the next-steps page at the start of every session. It has the ordered steps with their status, the user's decisions Q1–Q9, and the `#decision-record` JSON block. Copy the user's answers into that block and mark steps done there.
-- **GitHub:** private repo `fanfinity/sfere-android-sdk`. `origin` uses HTTPS because no SSH key is loaded. Push with `git -c credential.helper='!gh auth git-credential' push`, or run `gh auth setup-git` once.
+- **Sibling repo:** the iOS SDK is `sfere-io/sfere-ios-sdk`, checked out at `~/Desktop/Projects/sfere-ios-sdk`. Until 2026-10-18 both lived in one repo, `sfere-io/sfere-mobile-sdks`, which is now deleted from GitHub. The two were split because apps integrate them differently. The old local folder `~/Desktop/Projects/sfere-mobile-sdks` was deleted too.
+- **Payload contract:** `docs/WIRE-CONTRACT.md` and `docs/EVENTS.md` in the private repo `sfere-io/sfere-sdk`. Read them with `gh api 'repos/sfere-io/sfere-sdk/contents/<path>' -H 'Accept: application/vnd.github.raw'`; `gh repo clone` fails on this machine.
+- **Plan and next steps:** `docs/mobile/sfere-mobile-sdks-plan.html` and `docs/mobile/sfere-mobile-sdks-next-steps.html` in `sfere-io/sfere-sdk`. They cover both platforms. Read them with `gh api 'repos/sfere-io/sfere-sdk/contents/docs/mobile/<file>' -H 'Accept: application/vnd.github.raw'`. Change them through a docs PR in that repo. The vendor name of the ingestion platform never appears there. Read the next-steps page at the start of every session. It has the ordered steps with their status, the user's decisions Q1–Q9, and the `#decision-record` JSON block. Copy the user's answers into that block and mark steps done there.
+- **GitHub:** private repo `sfere-io/sfere-android-sdk` (the organization was `fanfinity` until 2026-10-20; old URLs redirect). `context.library.name` stays `@fanfinity/sfere-android` and the shared fixtures keep their text: both are the wire contract, shared with the iOS and JS SDKs, and change only together with them. `origin` uses HTTPS because no SSH key is loaded. Push with `git -c credential.helper='!gh auth git-credential' push`, or run `gh auth setup-git` once.
 
 ## Layout
 
@@ -13,13 +13,13 @@ The Sfere Android SDK. It collects first-party fan events in Android apps and se
 |---|---|
 | `README.md` | Integration guide for app developers. |
 | `TESTING.md` | For developers and testers: status, prerequisites, and how to test (unit tests, parity, mock, sample app). Keep its status table and test counts current. |
-| `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | Pull-request policy (mirrors `fanfinity/apis`), vulnerability reporting, and the changelog whose tagged section becomes the release notes. |
+| `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` | Pull-request policy (mirrors `sfere-io/apis`), vulnerability reporting, and the changelog whose tagged section becomes the release notes. |
 | `docs/ci-cd.md` | The workflows, the required checks, the rulesets and the release steps. Update it with every change under `.github/` or `.githooks/`. |
 | `.github/workflows/` | `ci.yml` (the gate: Kotlin style, Static analysis, API contract, Tests & coverage, SonarQube, Build), `dependency-graph.yml` (Gradle graph submission from `main`), `release.yml` (`v*` tag → GitHub Packages → verify the registry copy → GitHub release). Actions pinned by commit SHA. |
 | `.githooks/pre-commit` | ktlint on the staged Kotlin, `apiDump` when SDK sources are staged, vendor-name check. Installed with `git config core.hooksPath .githooks`. |
 | `sfere-analytics/api/sfere-analytics.api` | The public API dump (binary-compatibility-validator). `apiCheck` is the gate, `apiDump` the only writer. |
 | `config/detekt/detekt.yml` | detekt rules on top of the defaults; zero findings allowed, no baseline. |
-| `sonar-project.properties` | SonarQube Cloud project `fanfinity_sfere-android-sdk`; the scan runs only when `SONAR_TOKEN` exists. |
+| `sonar-project.properties` | SonarQube Cloud project `sfere-io_sfere-android-sdk`; the scan runs only when `SONAR_TOKEN` exists. |
 | `sfere-analytics/` | Module `:sfere-analytics` (`io.sfere:analytics`), sources in `src/main/kotlin/io/sfere/analytics/` (public API at the top level, everything else under `internal/`) |
 | `sfere-analytics/src/test/` | JVM tests (JUnit 4 + MockWebServer, no Robolectric). `TransportTest.kt` runs the real analytics-kotlin core |
 | `sample/` | Sample app (`:sample`, plain Android views, no UI libraries). Debug builds allow cleartext to `10.0.2.2` only. Default host `http://10.0.2.2:4320`, deep-link scheme `sfereexample://` |
@@ -90,10 +90,10 @@ These files are shared and must stay byte-identical in both repos: `fixtures/dee
 ## Decisions (2026-10-13 to 18)
 
 - **Separate repos (2026-10-18):** iOS and Android are separate repos because apps integrate them differently. The combined repo was deleted.
-- **Distribution:** private during beta (GitHub Packages Maven), then public (Maven Central `io.sfere`) at 1.0.0. **CI/CD added 2026-10-20** on the `fanfinity/apis` model: named required checks, rulesets without bypass, Dependabot, SHA-pinned actions, a tag-triggered release that publishes `io.sfere:analytics` to GitHub Packages and verifies the registry copy before cutting the GitHub release (`docs/ci-cd.md`). Plan steps F1 (Android part) and G1 (Android part) are done by this; the cross-repo parity job and the emulator job are still open.
+- **Distribution:** private during beta (GitHub Packages Maven), then public (Maven Central `io.sfere`) at 1.0.0. **CI/CD added 2026-10-20** on the `sfere-io/apis` model: named required checks, rulesets without bypass, Dependabot, SHA-pinned actions, a tag-triggered release that publishes `io.sfere:analytics` to GitHub Packages and verifies the registry copy before cutting the GitHub release (`docs/ci-cd.md`). Plan steps F1 (Android part) and G1 (Android part) are done by this; the cross-repo parity job and the emulator job are still open.
 - **Push tracking:** not in v1; it comes in v1.1.
 - **Platform context (Q2, 2026-10-15):** keep everything the base library adds: `app`, `device` (without `id`), `os`, `locale`, `timezone`, `userAgent`, `screen`, `network`.
-- **2026-10-15 answers (Q3–Q9 in the next-steps page):** native UI tests (Espresso); advertising IDs in v1 but off by default (`collectAdvertisingId`); Play Install Referrer in v1; GitHub Actions on every PR; Claude opens a PR for the contract docs in `fanfinity/sfere-sdk`; beta pilot app `sfere-sdk-demo`. (Q3 said "one private repo"; the 2026-10-18 split replaces it.)
+- **2026-10-15 answers (Q3–Q9 in the next-steps page):** native UI tests (Espresso); advertising IDs in v1 but off by default (`collectAdvertisingId`); Play Install Referrer in v1; GitHub Actions on every PR; Claude opens a PR for the contract docs in `sfere-io/sfere-sdk`; beta pilot app `sfere-sdk-demo`. (Q3 said "one private repo"; the 2026-10-18 split replaces it.)
 - **React Native:** the React Native SDK will wrap this SDK and the iOS one.
 - **Minimum OS:** Android API 21.
 
