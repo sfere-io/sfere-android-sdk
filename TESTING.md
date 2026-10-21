@@ -2,16 +2,17 @@
 
 For developers and testers. To add the SDK to an app, see [`README.md`](README.md). The iOS SDK lives in its own repository, [`sfere-io/sfere-ios-sdk`](https://github.com/sfere-io/sfere-ios-sdk), and sends the same payload.
 
-## Status (2026-10-20)
+## Status (2026-10-21)
 
-Ready for internal testing. Not published yet: publishing to GitHub Packages is configured and the first beta tag (`v0.1.0-beta.1`) is pending. The install steps in the README are the beta path.
+Version `0.1.0` is ready to tag. Apps install it from JitPack with no credentials (`com.github.sfere-io:sfere-android-sdk:v0.1.0`, steps in the README); a build of the release commit on JitPack succeeded before tagging. JitPack builds the `v0.1.0` tag the first time it is requested after the tag is pushed.
 
 | Area | State |
 |---|---|
 | Android SDK | 53 unit tests pass and the sample app builds. **Not yet run on an emulator or device**, so `Sfere.setup(context)`, the SharedPreferences store and the Android lifecycle events still need a real run. |
 | Same payload as iOS | The shared parity scenario matches field by field (`tools/parity.sh`). |
 | Staging | Not tested against the real ingestion endpoint yet. Everything so far runs against a local mock. |
-| CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan (once the token exists) and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
+| CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
+| Distribution | JitPack (`jitpack.yml`) is the public install path. The release workflow also publishes `io.sfere:analytics` to GitHub Packages, which needs a token. |
 
 ## What you need
 

@@ -64,7 +64,8 @@ What the checks gate, and how to run them locally, is in [docs/ci-cd.md](docs/ci
 - Releasing: see [docs/ci-cd.md](docs/ci-cd.md#releasing). In short: rename
   `[Unreleased]` to the version with the date, merge, then an admin tags
   `v<version>` on `main`. The `release` workflow publishes to GitHub Packages,
-  verifies the registry copy and creates the GitHub release.
+  verifies the registry copy and creates the GitHub release. Apps install the tag
+  from JitPack (`jitpack.yml`), which builds it on first request.
 
 ## Merge flow
 

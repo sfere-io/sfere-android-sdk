@@ -91,10 +91,14 @@ sonar {
     }
 }
 
-// Publishing. Beta: GitHub Packages, private. 1.0.0: Maven Central (same coordinates).
-// Credentials come from Gradle properties (gpr.user / gpr.token, in ~/.gradle/gradle.properties,
-// never in the repo) or, in GitHub Actions, from GITHUB_ACTOR / GITHUB_TOKEN.
-// Release flow: docs/ci-cd.md.
+// Publishing. Apps install from JitPack (jitpack.yml), which runs
+// publishReleasePublicationToMavenLocal on a release tag and serves the result as
+// com.github.sfere-io:sfere-android-sdk:<tag>, with no credentials. The release workflow also
+// publishes io.sfere:analytics to GitHub Packages; Maven Central (same coordinates) comes later.
+// GitHub Packages credentials come from Gradle properties (gpr.user / gpr.token, in
+// ~/.gradle/gradle.properties, never in the repo) or, in GitHub Actions, from GITHUB_ACTOR /
+// GITHUB_TOKEN. They are read only when publishing to that repository, so a build without
+// them (JitPack, CI's local publish) is unaffected. Release flow: docs/ci-cd.md.
 publishing {
     publications {
         register<MavenPublication>("release") {

@@ -58,9 +58,32 @@ Steps, in order:
 3. The AAR, POM, sources jar and module file are downloaded back from
    `maven.pkg.github.com` and the AAR's sha256 must equal the one just built; the
    classes and the base-library dependency are checked again on the registry copy.
-4. `gh release create vX.Y.Z` with the CHANGELOG section as notes (plus the install
-   snippet and the AAR's sha256), the registry's AAR, sources jar and POM attached,
-   and `--prerelease` when the version has a `-` suffix.
+4. `gh release create vX.Y.Z` with the CHANGELOG section as notes (plus the JitPack
+   install snippet, the GitHub Packages coordinates and the AAR's sha256), the
+   registry's AAR, sources jar and POM attached, and `--prerelease` when the version
+   has a `-` suffix.
+
+### `jitpack.yml`: the public install path
+
+[JitPack](https://jitpack.io/#sfere-io/sfere-android-sdk) builds the SDK from a
+public tag the first time anyone requests that version, and serves it with no
+account or token. This is the install path in the README. It is not a GitHub
+workflow: JitPack runs on its own machines and reads `jitpack.yml`:
+
+| Item | Value |
+|---|---|
+| JDK | 17 (`jdk: openjdk17`) |
+| Command | `./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal`: the library only, the same publication CI's **Build** job checks. No GitHub Packages credentials are needed or read |
+| Coordinates | `com.github.sfere-io:sfere-android-sdk:<tag>`, e.g. `v0.1.0`. JitPack rewrites the POM and the Gradle module file from `io.sfere:analytics` to these coordinates; the dependencies stay as built |
+| Build log | `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/<tag or commit sha>/build.log` |
+
+JitPack caches each version's result, failures included, so a failed tag stays
+failed: fix forward with a new version. Any commit can be built before tagging by
+requesting `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/<full sha>/sfere-android-sdk-<full sha>.pom`;
+that is how a change to `jitpack.yml` or the publishing block is checked.
+Known gap: JitPack's rewritten Gradle module file names the sources jar without its
+`-sources` classifier, so IDEs may not attach sources from it. The `-sources.jar`
+itself is served.
 
 ## Releasing
 
@@ -81,30 +104,38 @@ Steps, in order:
 3. Watch the `release` run. When it is green, the package is at
    https://github.com/sfere-io/sfere-android-sdk/packages and the release at
    https://github.com/sfere-io/sfere-android-sdk/releases.
-4. If anything after the publish step failed, the version is on the registry
+   The `release` environment has no required reviewers, so the run does not wait for
+   an approval.
+4. Start the JitPack build of the tag, so the first app does not wait for it:
+
+   ```sh
+   curl -s -m 600 -o /dev/null https://jitpack.io/com/github/sfere-io/sfere-android-sdk/vX.Y.Z/sfere-android-sdk-vX.Y.Z.pom
+   curl -s https://jitpack.io/api/builds/com.github.sfere-io/sfere-android-sdk/vX.Y.Z   # "status": "ok"
+   ```
+
+   The log is at `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/vX.Y.Z/build.log`.
+5. If anything after the publish step failed, the version is on the registry
    already: fix forward with a new `VERSION_NAME`, never by re-tagging.
 
-Beta versions are `X.Y.Z-beta.N` (`0.1.0-beta.1` first). At 1.0.0 the same
-publication moves to Maven Central under the same coordinates; the POM already
-carries the name, description, URL, organization, developers and SCM blocks Central
-requires, and will need a licence block then.
+Versions are plain `X.Y.Z`; `0.1.0` is the first release, and 0.x versions may
+change the API. A pre-release suffix (`X.Y.Z-beta.N`) is still accepted and marks
+the GitHub release as a pre-release. Maven Central (`io.sfere:analytics`) is a later
+step: the POM already carries the name, description, URL, organization, developers
+and SCM blocks Central requires, and will need a licence block then.
 
 ## Consuming the package
 
-During the beta the artifact is private on GitHub Packages. An app needs a GitHub
-account with read access to this repository and a classic personal access token
-with the `read:packages` scope. The token goes in the developer's
-`~/.gradle/gradle.properties`, never in the app repository:
+Apps install from JitPack with no credentials: the README's **Install** section has
+the snippet (`maven("https://jitpack.io")` and
+`com.github.sfere-io:sfere-android-sdk:vX.Y.Z`).
 
-```properties
-gpr.user=<github login>
-gpr.token=<token with read:packages>
-```
-
-Then, in the app's `settings.gradle.kts` and module `build.gradle.kts`, the
-snippet in the README's **Install** section. CI systems building the app use a
-service account's token the same way (as environment variables mapped to those
-Gradle properties).
+The GitHub Packages copy (`io.sfere:analytics:X.Y.Z`) is an extra channel. GitHub
+Packages needs a token to download even from a public repository: a GitHub account
+and a classic personal access token with the `read:packages` scope, in the
+developer's `~/.gradle/gradle.properties` (never in the app repository) as
+`gpr.user` and `gpr.token`, with
+`maven("https://maven.pkg.github.com/sfere-io/sfere-android-sdk")` and those
+credentials in the app's repositories.
 
 ## Branch and tag protection
 
@@ -177,7 +208,7 @@ JDK 17 is required (`jvmToolchain(17)`). On this project's Macs:
 | `GITHUB_TOKEN` | automatic | publishing to GitHub Packages, the GitHub release, the dependency submission |
 
 No deploy keys, no personal tokens, no cloud credentials: the SDK ships to GitHub
-Packages, not to a server.
+Packages with the Actions token, and JitPack needs none.
 
 ## Not yet in CI
 
