@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-This repository is private. Please do **not** open a public issue or discuss the
+This repository is public. Please do **not** open a public issue or discuss the
 vulnerability in a pull request.
 
 Report vulnerabilities privately to the repository administrators
@@ -23,7 +23,9 @@ the fix and disclosure timeline.
 
 - The SDK (`sfere-analytics/`), its build and publishing configuration, and the
   CI/release workflows (`.github/workflows/**`, `.githooks/**`)
-- The published artifact `io.sfere:analytics` on GitHub Packages
+- The published artifacts: `com.github.sfere-io:sfere-android-sdk` on JitPack
+  (built from the release tags by `jitpack.yml`) and `io.sfere:analytics` on
+  GitHub Packages
 - Dependency vulnerabilities in `gradle/libs.versions.toml` and the resolved
   dependency graph (tracked via Dependabot alerts and security updates)
 

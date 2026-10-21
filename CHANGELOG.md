@@ -7,11 +7,13 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
-## [0.1.0-beta.1] - 2026-10-20
+## [0.1.0] - 2026-10-21
+
+The first public release. `0.1.0-beta.1` was never tagged or published; its changes ship here.
 
 ### Added
 
-- First beta of the SDK on the base library (analytics-kotlin 1.26.0): `Sfere.setup`,
+- The SDK on the base library (analytics-kotlin 1.26.0): `Sfere.setup`,
   `track`, `screen`, `identify`, `purchase`, `reset`, `setConsent`, `setEnabled`, `openUrl`.
 - Lifecycle events `app_installed`, `app_updated`, `app_opened`, `app_backgrounded`,
   `session_started` and `deep_link_opened`, with GA4-style snake_case names.
@@ -19,10 +21,10 @@ the tagged version as the GitHub release notes, so write entries for app develop
 - Consent (`context.consent`) and opt-out, both remembered across launches.
 - Uploads to `POST {host}/v1/batch/b` only, with Basic auth; no `_metadata`,
   no empty `integrations`, no `context.instanceId`, no `context.device.id`.
-- Publishing to GitHub Packages (`maven.pkg.github.com/sfere-io/sfere-android-sdk`, the organization
-  renamed from fanfinity to sfere-io on 2026-10-20)
-  with the sources jar; CI gates on every pull request (style, static analysis,
-  public API dump, tests with coverage, build).
+- Install from JitPack with no credentials: add `maven("https://jitpack.io")` and
+  `implementation("com.github.sfere-io:sfere-android-sdk:v0.1.0")` (see the README).
+  Each release is also published to GitHub Packages as `io.sfere:analytics`, which
+  needs a GitHub token to download.
 - Built with Kotlin 2.4.21, with kotlinx-serialization-json 1.11.0 (part of the public API)
   and kotlinx-coroutines 1.11.0. Apps that compile Kotlin need Kotlin 2.3 or newer; Java-only
   apps are not affected.

@@ -1,0 +1,7 @@
+# JitPack (https://jitpack.io) builds the SDK from a public tag on first request and
+# serves it without credentials. Only the library is built and installed into the
+# local Maven repository, which is where JitPack collects the artifacts from.
+jdk:
+  - openjdk17
+install:
+  - ./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal --no-daemon --stacktrace

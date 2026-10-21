@@ -16,22 +16,15 @@
 
 Collects first-party fan events in your Android app and sends them to Sfere. The payload and the event names are the same as Sfere's browser and server SDKs.
 
-- Artifact: `io.sfere:analytics`
+- Version: `v0.1.0`, an early 0.x release. The API may change before 1.0.0; each change is listed in the [CHANGELOG](CHANGELOG.md).
 - Android 5.0+ (API 21)
 - Kotlin and Java. Kotlin apps need Kotlin 2.3 or newer (the SDK is built with Kotlin 2.4).
 
 ## Install
 
-> **Not yet published.** Publishing is configured, but the first beta (`0.1.0-beta.1`) has not been tagged yet. The steps below are the install path for the beta; they work as soon as the first release exists at <https://github.com/sfere-io/sfere-android-sdk/packages>.
+The SDK is distributed through [JitPack](https://jitpack.io/#sfere-io/sfere-android-sdk), which builds it from this repository's release tags. No account or token is needed.
 
-During the beta the SDK is published privately to GitHub Packages. You need a GitHub account with read access to this repository and a personal access token with the `read:packages` scope. Put the token in your own `~/.gradle/gradle.properties`, never in the app's repository:
-
-```properties
-gpr.user=<your GitHub login>
-gpr.token=<token with read:packages>
-```
-
-Then add the repository and the dependency:
+Add the JitPack repository:
 
 ```kotlin
 // settings.gradle.kts
@@ -39,22 +32,24 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://maven.pkg.github.com/sfere-io/sfere-android-sdk") {
-            credentials {
-                username = providers.gradleProperty("gpr.user").orNull
-                password = providers.gradleProperty("gpr.token").orNull // a token with read:packages
-            }
+        maven("https://jitpack.io") {
+            // Only the Sfere SDK comes from JitPack; everything else keeps resolving from the repositories above.
+            content { includeGroup("com.github.sfere-io") }
         }
     }
 }
+```
 
+Then add the dependency:
+
+```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("io.sfere:analytics:0.1.0-beta.1")
+    implementation("com.github.sfere-io:sfere-android-sdk:v0.1.0")
 }
 ```
 
-Each release is listed at <https://github.com/sfere-io/sfere-android-sdk/releases> with its changelog and the AAR's sha256. At 1.0.0 the same coordinates move to Maven Central and the token goes away.
+The version is the release tag, including the `v`. Each release is listed at <https://github.com/sfere-io/sfere-android-sdk/releases> with its changelog. The SDK pulls in its base library (`com.segment.analytics.kotlin:android`) and kotlinx-serialization from Maven Central.
 
 ## Set up
 
@@ -65,8 +60,8 @@ class FanApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Sfere.setup(this, SfereConfig(
-            writeKey = "keyId:secret",            // your browser key; never a server key
-            host = "https://ingest.example.com",  // your ingestion origin, no path
+            writeKey = "keyId:secret",          // your browser key; never a server key
+            host = "https://events.sfere.io",   // the Sfere event host, no path
         ))
     }
 }
@@ -233,6 +228,6 @@ Set `debug = true` to log every payload under the `Sfere` tag.
 ./gradlew --stop                               # stop the Gradle daemons afterwards
 ```
 
-Every pull request runs the same checks in GitHub Actions, and a `vX.Y.Z` tag publishes the SDK to GitHub Packages. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the pull-request policy and [`docs/ci-cd.md`](docs/ci-cd.md) the workflows and the release steps.
+Every pull request runs the same checks in GitHub Actions. A `vX.Y.Z` tag cuts the GitHub release (and publishes a copy to GitHub Packages), and JitPack builds that tag the first time an app requests it. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the pull-request policy and [`docs/ci-cd.md`](docs/ci-cd.md) the workflows and the release steps.
 
 The tests read the shared fixtures in `fixtures/` (deep-link click IDs, event renames), which every Sfere SDK must pass. The iOS SDK (`sfere-ios-sdk`) keeps an identical copy.

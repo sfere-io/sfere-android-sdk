@@ -1,6 +1,8 @@
 name: release
 
-# Publishes the SDK to GitHub Packages and cuts the GitHub release.
+# Publishes the SDK to GitHub Packages and cuts the GitHub release. Apps install
+# from JitPack (jitpack.yml), which builds the same public tag on first request and
+# needs no credentials; GitHub Packages is a second channel that needs a token.
 #
 # Trigger: a `vX.Y.Z` (or `vX.Y.Z-beta.N`) tag on a commit that is on main. Creating
 # the tag is the privileged act: the "release-tags" ruleset lets only repository
@@ -135,13 +137,15 @@ jobs:
             echo
             echo "## Install"
             echo
+            echo "From JitPack, no credentials needed. Add \`maven(\"https://jitpack.io\")\` to the repositories in \`settings.gradle.kts\`, then:"
+            echo
             echo '```kotlin'
-            echo "implementation(\"io.sfere:analytics:${VERSION}\")"
+            echo "implementation(\"com.github.${GITHUB_REPOSITORY_OWNER}:${GITHUB_REPOSITORY#*/}:${TAG}\")"
             echo '```'
             echo
-            echo "Repository: \`https://maven.pkg.github.com/${GITHUB_REPOSITORY}\` (GitHub Packages, needs a token with \`read:packages\`; see the README)."
+            echo "Also on GitHub Packages as \`io.sfere:analytics:${VERSION}\` (\`https://maven.pkg.github.com/${GITHUB_REPOSITORY}\`, needs a token with \`read:packages\`)."
             echo
-            echo "AAR sha256: \`${AAR_SHA256}\`"
+            echo "AAR sha256 (the GitHub Packages build attached here): \`${AAR_SHA256}\`"
           } >> "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
