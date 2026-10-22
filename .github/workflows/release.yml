@@ -11,11 +11,15 @@ name: release
 #
 # Flow: the same CI gate every pull request passes (ci.yml, via workflow_call) ->
 # the tag must equal VERSION_NAME in gradle.properties and have a CHANGELOG section
-# -> sign and upload io.sfere:analytics:VERSION to the Central Portal, which
-# validates and publishes it (the Gradle task waits until it is published) ->
-# download it back from Maven Central and check the AAR is byte-identical to the
-# one just built -> GitHub release with the AAR, sources jar and POM attached and
-# the CHANGELOG section as notes.
+# -> sign and upload io.sfere:analytics:VERSION to the Central Portal and wait
+# until the Portal has validated it (seconds) -> check the signed files just
+# uploaded -> GitHub release with the AAR, sources jar and POM attached and the
+# CHANGELOG section as notes.
+#
+# The run does not wait for Central to finish publishing (usually 5-30 minutes,
+# sometimes longer, outside our control): a validated deployment is released
+# automatically. A developer confirms the version on Maven Central afterwards
+# (docs/ci-cd.md, "Releasing").
 #
 # A version on Maven Central is permanent: it can never be deleted or replaced.
 # To ship a fix, bump VERSION_NAME and tag again.
@@ -45,7 +49,7 @@ jobs:
     name: Publish to Maven Central
     needs: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 90 # Central validates and publishes in minutes, sometimes much longer
+    timeout-minutes: 30
     environment: release
     permissions:
       contents: write # the GitHub release
@@ -106,39 +110,30 @@ jobs:
                    ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
             [ -n "${!v}" ] || { echo "::error::Secret for ${v#ORG_GRADLE_PROJECT_} is not set in the release environment."; exit 1; }
           done
-          ./gradlew :sfere-analytics:publishToMavenCentral --no-daemon
+          # publishToMavenLocal writes the same signed publication to ~/.m2, where the next
+          # step checks it and the GitHub release takes its files from.
+          ./gradlew :sfere-analytics:publishToMavenCentral :sfere-analytics:publishToMavenLocal --no-daemon
 
-      # The registry's copy must be the bytes just built, complete and signed. Fetched
-      # back as a consumer would fetch it. The Portal reports "published" a little
-      # before every file is served from repo1, so wait for it.
-      - name: Verify the published artifact against Maven Central
+      # The files Central received: complete, signed, and the expected content.
+      - name: Check the uploaded artifact
         run: |
-          BASE="https://repo1.maven.org/maven2/io/sfere/analytics/${VERSION}"
-          mkdir -p "$RUNNER_TEMP/registry"
-          for i in $(seq 1 60); do
-            curl -fsI --proto '=https' "$BASE/analytics-${VERSION}.pom" > /dev/null && break
-            echo "Not on Maven Central yet (attempt $i); waiting 30 s."
-            sleep 30
-          done
+          SRC="$HOME/.m2/repository/io/sfere/analytics/${VERSION}"
+          OUT="$RUNNER_TEMP/release"
+          mkdir -p "$OUT"
           for f in "analytics-${VERSION}.aar" "analytics-${VERSION}.pom" "analytics-${VERSION}-sources.jar" \
-                   "analytics-${VERSION}-javadoc.jar" "analytics-${VERSION}.module" "analytics-${VERSION}.aar.asc"; do
-            curl -fsSL --proto '=https' --retry 5 --retry-delay 20 --retry-all-errors -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
-              || { echo "::error::$f is not on Maven Central after the publish step."; exit 1; }
+                   "analytics-${VERSION}-javadoc.jar" "analytics-${VERSION}.module"; do
+            [ -s "$SRC/$f" ] || { echo "::error::$f is missing from the publication."; exit 1; }
+            [ -s "$SRC/$f.asc" ] || { echo "::error::$f is not signed."; exit 1; }
+            cp "$SRC/$f" "$OUT/"
           done
-          LOCAL_AAR="sfere-analytics/build/outputs/aar/sfere-analytics-release.aar"
-          LOCAL_SHA="$(sha256sum "$LOCAL_AAR" | cut -d' ' -f1)"
-          REMOTE_SHA="$(sha256sum "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" | cut -d' ' -f1)"
-          if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
-            echo "::error::The AAR on the registry (${REMOTE_SHA}) is not the one built here (${LOCAL_SHA})."
-            exit 1
-          fi
-          unzip -p "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" classes.jar > "$RUNNER_TEMP/classes.jar"
+          unzip -p "$OUT/analytics-${VERSION}.aar" classes.jar > "$RUNNER_TEMP/classes.jar"
           unzip -l "$RUNNER_TEMP/classes.jar" | grep -q 'io/sfere/analytics/Sfere.class' \
             || { echo "::error::The published classes.jar has no io.sfere.analytics.Sfere."; exit 1; }
-          grep -q "com.segment.analytics.kotlin" "$RUNNER_TEMP/registry/analytics-${VERSION}.pom" \
+          grep -q "com.segment.analytics.kotlin" "$OUT/analytics-${VERSION}.pom" \
             || { echo "::error::The published POM does not declare the base library dependency."; exit 1; }
-          echo "AAR_SHA256=$LOCAL_SHA" >> "$GITHUB_ENV"
-          echo "::notice::Maven Central copy of io.sfere:analytics:${VERSION} verified (sha256 ${LOCAL_SHA})."
+          AAR_SHA256="$(sha256sum "$OUT/analytics-${VERSION}.aar" | cut -d' ' -f1)"
+          echo "AAR_SHA256=$AAR_SHA256" >> "$GITHUB_ENV"
+          echo "::notice::io.sfere:analytics:${VERSION} validated by Central and released; it appears on repo1.maven.org once Central finishes publishing (sha256 ${AAR_SHA256})."
 
       - name: Release notes from the CHANGELOG
         run: |
@@ -158,7 +153,7 @@ jobs:
             echo "implementation(\"io.sfere:analytics:${VERSION}\")"
             echo '```'
             echo
-            echo "AAR sha256 (the Maven Central copy attached here): \`${AAR_SHA256}\`"
+            echo "AAR sha256 (the build uploaded to Maven Central, attached here): \`${AAR_SHA256}\`"
           } >> "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
@@ -168,11 +163,10 @@ jobs:
         run: |
           ARGS=(--title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag)
           if [ "$PRERELEASE" = "true" ]; then ARGS+=(--prerelease); fi
-          cp "$RUNNER_TEMP/registry/analytics-${VERSION}.aar" "$RUNNER_TEMP/analytics-${VERSION}.aar"
           gh release create "$TAG" "${ARGS[@]}" \
-            "$RUNNER_TEMP/analytics-${VERSION}.aar" \
-            "$RUNNER_TEMP/registry/analytics-${VERSION}-sources.jar" \
-            "$RUNNER_TEMP/registry/analytics-${VERSION}.pom"
+            "$RUNNER_TEMP/release/analytics-${VERSION}.aar" \
+            "$RUNNER_TEMP/release/analytics-${VERSION}-sources.jar" \
+            "$RUNNER_TEMP/release/analytics-${VERSION}.pom"
           {
             echo "### Released io.sfere:analytics:${VERSION}"
             echo
@@ -182,4 +176,10 @@ jobs:
             echo "| Package | https://central.sonatype.com/artifact/io.sfere/analytics/${VERSION} |"
             echo "| Release | https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG} |"
             echo "| AAR sha256 | \`${AAR_SHA256}\` |"
+            echo
+            echo "Central validated the deployment and is publishing it (usually 5-30 minutes). Confirm it is live:"
+            echo
+            echo '```sh'
+            echo "curl -sI https://repo1.maven.org/maven2/io/sfere/analytics/${VERSION}/analytics-${VERSION}.pom | head -1   # HTTP/2 200"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
