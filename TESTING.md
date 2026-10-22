@@ -4,7 +4,7 @@ For developers and testers. To add the SDK to an app, see [`README.md`](README.m
 
 ## Status (2026-10-22)
 
-Version `0.1.0` is released (through JitPack). Version `0.1.1` moves distribution to Maven Central as `io.sfere:analytics` with no SDK change; it ships when the release secrets are set and `v0.1.1` is tagged ([`docs/ci-cd.md`](docs/ci-cd.md#releasing)).
+Version `0.1.0` is released (through JitPack). Version `0.1.1` moves distribution to Maven Central as `io.sfere:analytics` with no SDK change; it ships when `v0.1.1` is tagged ([`docs/ci-cd.md`](docs/ci-cd.md#releasing)).
 
 | Area | State |
 |---|---|

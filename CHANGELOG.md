@@ -7,7 +7,7 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
-## [0.1.1] - Unreleased
+## [0.1.1] - 2026-10-22
 
 ### Changed
 
