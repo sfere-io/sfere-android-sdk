@@ -53,18 +53,21 @@ Steps, in order:
 
 1. The tag is `vX.Y.Z` or `vX.Y.Z-pre.N`, equals `VERSION_NAME` in `gradle.properties`,
    points at a commit on `main`, and `CHANGELOG.md` has a `## [X.Y.Z]` section.
-2. `./gradlew :sfere-analytics:publishToMavenCentral` (plugin
-   `com.vanniktech.maven.publish`, configured in `sfere-analytics/build.gradle.kts`):
-   signs every file with the GPG key, uploads one deployment to the
-   [Central Portal](https://central.sonatype.com) under the verified `io.sfere`
-   namespace, releases it automatically, and waits until the Portal reports it
-   `PUBLISHED`. A failed validation fails the step with the Portal's reasons.
-3. The AAR, POM, sources jar, javadoc jar, module file and the AAR's signature are
-   downloaded back from `repo1.maven.org` (polling up to 30 minutes for the sync), the
-   AAR's sha256 must equal the one just built, and the classes and the base-library
-   dependency are checked again on the Central copy.
+2. `./gradlew :sfere-analytics:publishToMavenCentral :sfere-analytics:publishToMavenLocal`
+   (plugin `com.vanniktech.maven.publish`, configured in
+   `sfere-analytics/build.gradle.kts`): signs every file with the GPG key, uploads one
+   deployment to the [Central Portal](https://central.sonatype.com) under the verified
+   `io.sfere` namespace with automatic release, and waits until the Portal reports it
+   `VALIDATED` (seconds). A failed validation fails the step with the Portal's reasons.
+   The run does **not** wait for Central to finish publishing: that takes 5–30
+   minutes, sometimes more, and a validated deployment always goes out. (`v0.1.1`
+   waited for it and timed out after 15 minutes while the release was still going out.)
+3. The same signed publication, written to `~/.m2` by `publishToMavenLocal`, is
+   checked: the AAR, POM, sources jar, javadoc jar and module file are there with
+   their `.asc` signatures, the classes contain `io.sfere.analytics.Sfere`, and the
+   POM declares the base library.
 4. `gh release create vX.Y.Z` with the CHANGELOG section as notes (plus the install
-   snippet and the AAR's sha256), the Central AAR, sources jar and POM attached, and
+   snippet and the AAR's sha256), the uploaded AAR, sources jar and POM attached, and
    `--prerelease` when the version has a `-` suffix.
 
 **A version on Maven Central is permanent.** It cannot be deleted, replaced or
@@ -89,14 +92,24 @@ generated API docs (Dokka) are a later step.
 
    Only admins can create `v*` tags (the `release-tags` ruleset), and no one can
    move or delete a tag (`protect-tags`).
-3. Watch the `release` run. When it is green, the version is at
-   https://central.sonatype.com/artifact/io.sfere/analytics and the release at
-   https://github.com/sfere-io/sfere-android-sdk/releases. Search on
-   central.sonatype.com can take a few hours to list a new version; resolving it
-   from `mavenCentral()` works as soon as the run is green.
+3. Watch the `release` run (a few minutes after CI). When it is green, Central has
+   validated the version and the GitHub release is at
+   https://github.com/sfere-io/sfere-android-sdk/releases.
    The `release` environment has no required reviewers, so the run does not wait for
    an approval.
-4. If anything after the publish step failed, the version is on Maven Central
+4. **Confirm the version on Maven Central** 5–30 minutes later. The deployment shows
+   `PUBLISHED` at https://central.sonatype.com/publishing/deployments, and this
+   returns `200`:
+
+   ```sh
+   curl -sI https://repo1.maven.org/maven2/io/sfere/analytics/X.Y.Z/analytics-X.Y.Z.pom | head -1
+   ```
+
+   Apps can resolve it from `mavenCentral()` from then on; the search page at
+   https://central.sonatype.com/artifact/io.sfere/analytics can take a few hours more.
+   If the deployment shows `FAILED` instead, read its errors on the deployments page
+   and fix forward with a new version.
+5. If anything after the publish step failed, the version is on Maven Central
    already: fix forward with a new `VERSION_NAME`, never by re-tagging.
 
 Versions are plain `X.Y.Z`; `0.1.0` is the first release, and 0.x versions may

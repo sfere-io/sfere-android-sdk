@@ -97,8 +97,10 @@ sonar {
 // never in the repo. `./gradlew publishToMavenLocal` needs none of them: CI's Build job uses
 // it to check the publication without touching a registry. Release flow: docs/ci-cd.md.
 mavenPublishing {
-    // Wait until the release is live on Central, so release.yml can fetch it back.
-    publishToMavenCentral(automaticRelease = true, validateDeployment = DeploymentValidation.PUBLISHED)
+    // Wait only for the Portal's validation (seconds), the step that can reject a release. A validated
+    // deployment is published automatically; that takes Central 5-30 minutes or more, and release.yml
+    // does not wait for it.
+    publishToMavenCentral(automaticRelease = true, validateDeployment = DeploymentValidation.VALIDATED)
     // Signed whenever the key is supplied, which release.yml checks before publishing (Central
     // rejects unsigned files). Without it, publishToMavenLocal still works for dry runs.
     if (providers.gradleProperty("signingInMemoryKey").isPresent) {

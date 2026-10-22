@@ -7,6 +7,12 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
+### Changed
+
+- No change to the SDK. The release workflow now finishes once Maven Central has
+  validated a release instead of waiting for Central to publish it, so a new version
+  can take up to about 30 minutes after its GitHub release to resolve from `mavenCentral()`.
+
 ## [0.1.1] - 2026-10-22
 
 ### Changed
