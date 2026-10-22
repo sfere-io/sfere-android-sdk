@@ -89,9 +89,12 @@ class TransportTest {
      * before that has no anonymous id and is dropped inside the library ("lateinit property anonymousId has not
      * been initialized"), which made the first upload never happen on a slow CI runner. The tests are about the
      * wire shape, so they start from a started library, the way an app's first event normally finds it.
+     * The user state alone is not enough: until settings are applied the library marks itself not running and
+     * its startup queue holds every event, so `traits()` stays empty after `identify` (seen on CI 2026-10-22).
      */
     private fun awaitStartup(analytics: Analytics) {
         waitUntil { runBlocking { analytics.store.currentState(UserInfo::class) } != null }
+        waitUntil { runBlocking { analytics.store.currentState(com.segment.analytics.kotlin.core.System::class) }?.running == true }
     }
 
     private fun waitUntil(timeoutMs: Long = 10_000, condition: () -> Boolean) {

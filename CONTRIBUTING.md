@@ -63,9 +63,9 @@ What the checks gate, and how to run them locally, is in [docs/ci-cd.md](docs/ci
   (label the PR `skip-changelog` for changes that don't affect the artifact).
 - Releasing: see [docs/ci-cd.md](docs/ci-cd.md#releasing). In short: rename
   `[Unreleased]` to the version with the date, merge, then an admin tags
-  `v<version>` on `main`. The `release` workflow publishes to GitHub Packages,
-  verifies the registry copy and creates the GitHub release. Apps install the tag
-  from JitPack (`jitpack.yml`), which builds it on first request.
+  `v<version>` on `main`. The `release` workflow signs and publishes
+  `io.sfere:analytics` to Maven Central, verifies the Central copy and creates the
+  GitHub release. A version on Maven Central is permanent.
 
 ## Merge flow
 

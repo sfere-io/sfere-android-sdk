@@ -165,7 +165,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # A tagged version is immutable on GitHub Packages, so the SDK must not change
+      # A tagged version is permanent on Maven Central, so the SDK must not change
       # under a version that is already released. VERSION_NAME (gradle.properties)
       # moves first. The same change set needs a CHANGELOG entry, unless the pull
       # request carries the `skip-changelog` label.
@@ -318,13 +318,14 @@ jobs:
       # same publication the release uses, into the runner's ~/.m2. Then the artifact
       # is checked the way a consumer would meet it.
       - name: Publish to the local Maven repository
-        run: ./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal --no-daemon
+        run: ./gradlew :sfere-analytics:publishToMavenLocal --no-daemon
       - name: Verify the published artifact
         run: |
           VERSION="$(sed -n 's/^VERSION_NAME=//p' gradle.properties | tr -d '[:space:]')"
           DIR="$HOME/.m2/repository/io/sfere/analytics/$VERSION"
           ls -l "$DIR"
-          for f in "analytics-$VERSION.aar" "analytics-$VERSION.pom" "analytics-$VERSION-sources.jar" "analytics-$VERSION.module"; do
+          # Maven Central refuses a release without the sources and javadoc jars.
+          for f in "analytics-$VERSION.aar" "analytics-$VERSION.pom" "analytics-$VERSION-sources.jar" "analytics-$VERSION-javadoc.jar" "analytics-$VERSION.module"; do
             [ -s "$DIR/$f" ] || { echo "::error::$f is missing from the published artifact."; exit 1; }
           done
           unzip -l "$DIR/analytics-$VERSION.aar" | grep -q 'classes.jar' || { echo "::error::The AAR has no classes.jar."; exit 1; }
@@ -335,6 +336,10 @@ jobs:
           grep -q "<version>$VERSION</version>" "$DIR/analytics-$VERSION.pom"
           # The base library is an `api` dependency: consumers must get it transitively.
           grep -q "com.segment.analytics.kotlin" "$DIR/analytics-$VERSION.pom" || { echo "::error::The POM does not declare the base library dependency."; exit 1; }
+          # Maven Central requires a licence, the SCM and a developer in the POM.
+          for tag in "<licenses>" "<scm>" "<developers>"; do
+            grep -q "$tag" "$DIR/analytics-$VERSION.pom" || { echo "::error::The POM has no $tag block, which Maven Central requires."; exit 1; }
+          done
           {
             echo "### Published artifact (local): io.sfere:analytics:$VERSION"
             echo

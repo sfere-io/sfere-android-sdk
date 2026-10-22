@@ -23,9 +23,9 @@ the fix and disclosure timeline.
 
 - The SDK (`sfere-analytics/`), its build and publishing configuration, and the
   CI/release workflows (`.github/workflows/**`, `.githooks/**`)
-- The published artifacts: `com.github.sfere-io:sfere-android-sdk` on JitPack
-  (built from the release tags by `jitpack.yml`) and `io.sfere:analytics` on
-  GitHub Packages
+- The published artifact `io.sfere:analytics` on Maven Central (signed with the
+  project's GPG key), and the earlier `0.1.0` build served by JitPack as
+  `com.github.sfere-io:sfere-android-sdk`
 - Dependency vulnerabilities in `gradle/libs.versions.toml` and the resolved
   dependency graph (tracked via Dependabot alerts and security updates)
 

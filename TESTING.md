@@ -2,9 +2,9 @@
 
 For developers and testers. To add the SDK to an app, see [`README.md`](README.md). The iOS SDK lives in its own repository, [`sfere-io/sfere-ios-sdk`](https://github.com/sfere-io/sfere-ios-sdk), and sends the same payload.
 
-## Status (2026-10-21)
+## Status (2026-10-22)
 
-Version `0.1.0` is ready to tag. Apps install it from JitPack with no credentials (`com.github.sfere-io:sfere-android-sdk:v0.1.0`, steps in the README); a build of the release commit on JitPack succeeded before tagging. JitPack builds the `v0.1.0` tag the first time it is requested after the tag is pushed.
+Version `0.1.0` is released (through JitPack). Version `0.1.1` moves distribution to Maven Central as `io.sfere:analytics` with no SDK change; it ships when `v0.1.1` is tagged ([`docs/ci-cd.md`](docs/ci-cd.md#releasing)).
 
 | Area | State |
 |---|---|
@@ -12,7 +12,7 @@ Version `0.1.0` is ready to tag. Apps install it from JitPack with no credential
 | Same payload as iOS | The shared parity scenario matches field by field (`tools/parity.sh`). |
 | Staging | Not tested against the real ingestion endpoint yet. Everything so far runs against a local mock. |
 | CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
-| Distribution | JitPack (`jitpack.yml`) is the public install path. The release workflow also publishes `io.sfere:analytics` to GitHub Packages, which needs a token. |
+| Distribution | Maven Central (`io.sfere:analytics`), signed and published by the release workflow. No token needed to install. |
 
 ## What you need
 

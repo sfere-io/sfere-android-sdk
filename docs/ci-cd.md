@@ -28,7 +28,7 @@ on the job that needs more.
 | **API contract** | vendor-name grep over every tracked file; `:sfere-analytics:apiCheck`; on PRs the public API diff against the base goes into the job summary; the version and CHANGELOG rules | the ingestion vendor is named anywhere; the committed `sfere-analytics/api/sfere-analytics.api` is stale (fix: `./gradlew :sfere-analytics:apiDump`, the diff is in the summary); the SDK changed while `VERSION_NAME` is already tagged; the SDK changed without a `CHANGELOG.md` change (label `skip-changelog` to waive) |
 | **Tests & coverage** | `:sfere-analytics:createDebugUnitTestCoverageReport` (runs `testDebugUnitTest`, then JaCoCo) | a test fails. The summary shows the counts and the line/branch coverage; results and the JaCoCo XML are the `test-results` artifact |
 | **SonarQube** | restores `test-results`, runs `./gradlew sonar` (the SonarQube Gradle scanner; keys and properties in `build.gradle.kts` and `sfere-analytics/build.gradle.kts`, the sample skipped) | the quality gate fails (`sonar.qualitygate.wait=true`). **Skipped with a note when `SONAR_TOKEN` is not set** (Dependabot runs), so the required check still passes |
-| **Build** | `:sfere-analytics:assembleRelease :sample:assembleDebug`, then `publishReleasePublicationToMavenLocal` and an inspection of the published files | the AAR, POM, sources jar or Gradle module file is missing from `~/.m2`, the AAR has no `classes.jar` / `io.sfere.analytics.Sfere` / consumer ProGuard rules, or the POM does not carry the base library as a dependency. The AAR and the sample APK are the `sfere-analytics` artifact |
+| **Build** | `:sfere-analytics:assembleRelease :sample:assembleDebug`, then `publishToMavenLocal` and an inspection of the published files | the AAR, POM, sources jar, javadoc jar or Gradle module file is missing from `~/.m2`, the POM lacks the licence, SCM or developer block Maven Central requires, the AAR has no `classes.jar` / `io.sfere.analytics.Sfere` / consumer ProGuard rules, or the POM does not carry the base library as a dependency. The AAR and the sample APK are the `sfere-analytics` artifact |
 
 ### `dependency-graph.yml`
 
@@ -46,44 +46,32 @@ repository it needs GitHub Advanced Security, which this plan does not include.
 | Trigger | `push` of a tag matching `v*` |
 | Gate | the whole `ci.yml` first (`workflow_call`), so a release never ships bytes that did not pass every PR check |
 | Environment | `release` (deployment record; accepts only `v*` refs) |
-| Permissions | `contents: write` (the GitHub release), `packages: write` (GitHub Packages) on the publish job only |
+| Permissions | `contents: write` (the GitHub release) on the publish job only |
+| Secrets | `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `SIGNING_KEY`, `SIGNING_KEY_PASSWORD` in the `release` environment (see "Secrets and variables") |
 
 Steps, in order:
 
 1. The tag is `vX.Y.Z` or `vX.Y.Z-pre.N`, equals `VERSION_NAME` in `gradle.properties`,
    points at a commit on `main`, and `CHANGELOG.md` has a `## [X.Y.Z]` section.
-2. `./gradlew :sfere-analytics:publishReleasePublicationToGitHubPackagesRepository`
-   with the Actions token. GitHub Packages refuses a version that already exists,
-   so a version is published once.
-3. The AAR, POM, sources jar and module file are downloaded back from
-   `maven.pkg.github.com` and the AAR's sha256 must equal the one just built; the
-   classes and the base-library dependency are checked again on the registry copy.
-4. `gh release create vX.Y.Z` with the CHANGELOG section as notes (plus the JitPack
-   install snippet, the GitHub Packages coordinates and the AAR's sha256), the
-   registry's AAR, sources jar and POM attached, and `--prerelease` when the version
-   has a `-` suffix.
+2. `./gradlew :sfere-analytics:publishToMavenCentral` (plugin
+   `com.vanniktech.maven.publish`, configured in `sfere-analytics/build.gradle.kts`):
+   signs every file with the GPG key, uploads one deployment to the
+   [Central Portal](https://central.sonatype.com) under the verified `io.sfere`
+   namespace, releases it automatically, and waits until the Portal reports it
+   `PUBLISHED`. A failed validation fails the step with the Portal's reasons.
+3. The AAR, POM, sources jar, javadoc jar, module file and the AAR's signature are
+   downloaded back from `repo1.maven.org` (polling up to 30 minutes for the sync), the
+   AAR's sha256 must equal the one just built, and the classes and the base-library
+   dependency are checked again on the Central copy.
+4. `gh release create vX.Y.Z` with the CHANGELOG section as notes (plus the install
+   snippet and the AAR's sha256), the Central AAR, sources jar and POM attached, and
+   `--prerelease` when the version has a `-` suffix.
 
-### `jitpack.yml`: the public install path
+**A version on Maven Central is permanent.** It cannot be deleted, replaced or
+re-uploaded, so a broken release is fixed forward with a new version.
 
-[JitPack](https://jitpack.io/#sfere-io/sfere-android-sdk) builds the SDK from a
-public tag the first time anyone requests that version, and serves it with no
-account or token. This is the install path in the README. It is not a GitHub
-workflow: JitPack runs on its own machines and reads `jitpack.yml`:
-
-| Item | Value |
-|---|---|
-| JDK | 17 (`jdk: openjdk17`) |
-| Command | `./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal`: the library only, the same publication CI's **Build** job checks. No GitHub Packages credentials are needed or read |
-| Coordinates | `com.github.sfere-io:sfere-android-sdk:<tag>`, e.g. `v0.1.0`. JitPack rewrites the POM and the Gradle module file from `io.sfere:analytics` to these coordinates; the dependencies stay as built |
-| Build log | `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/<tag or commit sha>/build.log` |
-
-JitPack caches each version's result, failures included, so a failed tag stays
-failed: fix forward with a new version. Any commit can be built before tagging by
-requesting `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/<full sha>/sfere-android-sdk-<full sha>.pom`;
-that is how a change to `jitpack.yml` or the publishing block is checked.
-Known gap: JitPack's rewritten Gradle module file names the sources jar without its
-`-sources` classifier, so IDEs may not attach sources from it. The `-sources.jar`
-itself is served.
+The javadoc jar is empty for now (Central requires the file, not its content);
+generated API docs (Dokka) are a later step.
 
 ## Releasing
 
@@ -101,41 +89,29 @@ itself is served.
 
    Only admins can create `v*` tags (the `release-tags` ruleset), and no one can
    move or delete a tag (`protect-tags`).
-3. Watch the `release` run. When it is green, the package is at
-   https://github.com/sfere-io/sfere-android-sdk/packages and the release at
-   https://github.com/sfere-io/sfere-android-sdk/releases.
+3. Watch the `release` run. When it is green, the version is at
+   https://central.sonatype.com/artifact/io.sfere/analytics and the release at
+   https://github.com/sfere-io/sfere-android-sdk/releases. Search on
+   central.sonatype.com can take a few hours to list a new version; resolving it
+   from `mavenCentral()` works as soon as the run is green.
    The `release` environment has no required reviewers, so the run does not wait for
    an approval.
-4. Start the JitPack build of the tag, so the first app does not wait for it:
-
-   ```sh
-   curl -s -m 600 -o /dev/null https://jitpack.io/com/github/sfere-io/sfere-android-sdk/vX.Y.Z/sfere-android-sdk-vX.Y.Z.pom
-   curl -s https://jitpack.io/api/builds/com.github.sfere-io/sfere-android-sdk/vX.Y.Z   # "status": "ok"
-   ```
-
-   The log is at `https://jitpack.io/com/github/sfere-io/sfere-android-sdk/vX.Y.Z/build.log`.
-5. If anything after the publish step failed, the version is on the registry
+4. If anything after the publish step failed, the version is on Maven Central
    already: fix forward with a new `VERSION_NAME`, never by re-tagging.
 
 Versions are plain `X.Y.Z`; `0.1.0` is the first release, and 0.x versions may
 change the API. A pre-release suffix (`X.Y.Z-beta.N`) is still accepted and marks
-the GitHub release as a pre-release. Maven Central (`io.sfere:analytics`) is a later
-step: the POM already carries the name, description, URL, organization, developers
-and SCM blocks Central requires, and will need a licence block then.
+the GitHub release as a pre-release.
+
+`0.1.0` was released through JitPack (`com.github.sfere-io:sfere-android-sdk:v0.1.0`)
+and GitHub Packages before the move to Maven Central; `0.1.1` is the first version
+on Central, and neither earlier channel receives new versions.
 
 ## Consuming the package
 
-Apps install from JitPack with no credentials: the README's **Install** section has
-the snippet (`maven("https://jitpack.io")` and
-`com.github.sfere-io:sfere-android-sdk:vX.Y.Z`).
-
-The GitHub Packages copy (`io.sfere:analytics:X.Y.Z`) is an extra channel. GitHub
-Packages needs a token to download even from a public repository: a GitHub account
-and a classic personal access token with the `read:packages` scope, in the
-developer's `~/.gradle/gradle.properties` (never in the app repository) as
-`gpr.user` and `gpr.token`, with
-`maven("https://maven.pkg.github.com/sfere-io/sfere-android-sdk")` and those
-credentials in the app's repositories.
+Apps install from Maven Central with no credentials: `mavenCentral()` is in the
+default repositories of every Android project, so the README's **Install** section
+is one line, `implementation("io.sfere:analytics:X.Y.Z")`.
 
 ## Branch and tag protection
 
@@ -173,7 +149,7 @@ download cannot enter a build (this is also what SonarQube's `kotlin:S6474` and
   ./gradlew --write-verification-metadata sha256 ktlintCheck detekt :sfere-analytics:apiCheck \
     :sfere-analytics:lintRelease :sample:lintDebug :sfere-analytics:createDebugUnitTestCoverageReport \
     :sfere-analytics:assembleRelease :sample:assembleDebug \
-    :sfere-analytics:publishReleasePublicationToMavenLocal :sfere-analytics:sonarResolver
+    :sfere-analytics:publishToMavenLocal :sfere-analytics:sonarResolver
   ```
 
   Run it with a **fresh Gradle home** (`GRADLE_USER_HOME=$(mktemp -d)`), so Gradle
@@ -193,7 +169,7 @@ download cannot enter a build (this is also what SonarQube's `kotlin:S6474` and
 | Formatting | `./gradlew ktlintFormat` |
 | Public API dump | `./gradlew :sfere-analytics:apiDump` after an intentional API change; review the diff of `sfere-analytics/api/sfere-analytics.api` |
 | Coverage report | `./gradlew :sfere-analytics:createDebugUnitTestCoverageReport`, then `sfere-analytics/build/reports/coverage/test/debug/index.html` |
-| Publish dry run | `./gradlew :sfere-analytics:publishReleasePublicationToMavenLocal`, then look in `~/.m2/repository/io/sfere/analytics/` |
+| Publish dry run | `./gradlew :sfere-analytics:publishToMavenLocal`, then look in `~/.m2/repository/io/sfere/analytics/`. Needs no Central credentials or signing key |
 | Pre-commit hook | `git config core.hooksPath .githooks` once per clone: ktlint on the staged Kotlin, `apiDump` when the SDK sources are staged, and the vendor-name check |
 
 JDK 17 is required (`jvmToolchain(17)`). On this project's Macs:
@@ -205,10 +181,22 @@ JDK 17 is required (`jvmToolchain(17)`). On this project's Macs:
 | Name | Where | Used by |
 |---|---|---|
 | `SONAR_TOKEN` | repository secret (set 2026-10-20) | the `SonarQube` job. SonarQube Cloud project `sfere-io_sfere-android-sdk` in organization `sfere-io`: https://sonarcloud.io/project/overview?id=sfere-io_sfere-android-sdk |
-| `GITHUB_TOKEN` | automatic | publishing to GitHub Packages, the GitHub release, the dependency submission |
+| `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD` | `release` environment secrets | `release.yml`: a Central Portal **user token** (central.sonatype.com → Account → Generate User Token), not the login password, of an account that owns the verified `io.sfere` namespace (verified 2026-10-22 by a DNS TXT record on `sfere.io`) |
+| `SIGNING_KEY`, `SIGNING_KEY_PASSWORD` | `release` environment secrets | `release.yml`: the ASCII-armored private GPG key (`gpg --armor --export-secret-keys <KEY_ID>`) and its passphrase. Its public key must be on `keys.openpgp.org` or `keyserver.ubuntu.com`, where Central looks it up |
+| `GITHUB_TOKEN` | automatic | the GitHub release, the dependency submission |
 
-No deploy keys, no personal tokens, no cloud credentials: the SDK ships to GitHub
-Packages with the Actions token, and JitPack needs none.
+Set the release secrets with the GitHub CLI, so they never pass through a file or
+the shell history:
+
+```sh
+gh secret set MAVEN_CENTRAL_USERNAME --env release --repo sfere-io/sfere-android-sdk
+gh secret set MAVEN_CENTRAL_PASSWORD --env release --repo sfere-io/sfere-android-sdk
+gpg --armor --export-secret-keys <KEY_ID> | gh secret set SIGNING_KEY --env release --repo sfere-io/sfere-android-sdk
+gh secret set SIGNING_KEY_PASSWORD --env release --repo sfere-io/sfere-android-sdk
+```
+
+No deploy keys and no cloud credentials. Rotate the Portal token or the GPG key by
+replacing the secret; a new GPG key must be on a keyserver before the next release.
 
 ## Not yet in CI
 

@@ -16,40 +16,24 @@
 
 Collects first-party fan events in your Android app and sends them to Sfere. The payload and the event names are the same as Sfere's browser and server SDKs.
 
-- Version: `v0.1.0`, an early 0.x release. The API may change before 1.0.0; each change is listed in the [CHANGELOG](CHANGELOG.md).
+- Version: `0.1.1`, an early 0.x release. The API may change before 1.0.0; each change is listed in the [CHANGELOG](CHANGELOG.md).
 - Android 5.0+ (API 21)
 - Kotlin and Java. Kotlin apps need Kotlin 2.3 or newer (the SDK is built with Kotlin 2.4).
 
 ## Install
 
-The SDK is distributed through [JitPack](https://jitpack.io/#sfere-io/sfere-android-sdk), which builds it from this repository's release tags. No account or token is needed.
-
-Add the JitPack repository:
-
-```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        maven("https://jitpack.io") {
-            // Only the Sfere SDK comes from JitPack; everything else keeps resolving from the repositories above.
-            content { includeGroup("com.github.sfere-io") }
-        }
-    }
-}
-```
-
-Then add the dependency:
+The SDK is on [Maven Central](https://central.sonatype.com/artifact/io.sfere/analytics) as `io.sfere:analytics`. No account or token is needed, and `mavenCentral()` is already in the repositories of every Android project, so add only the dependency:
 
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.sfere-io:sfere-android-sdk:v0.1.0")
+    implementation("io.sfere:analytics:0.1.1")
 }
 ```
 
-The version is the release tag, including the `v`. Each release is listed at <https://github.com/sfere-io/sfere-android-sdk/releases> with its changelog. The SDK pulls in its base library (`com.segment.analytics.kotlin:android`) and kotlinx-serialization from Maven Central.
+Each release is listed at <https://github.com/sfere-io/sfere-android-sdk/releases> with its changelog. The SDK pulls in its base library (`com.segment.analytics.kotlin:android`) and kotlinx-serialization from Maven Central.
+
+Upgrading from `0.1.0`: that version was served by JitPack as `com.github.sfere-io:sfere-android-sdk:v0.1.0`. Replace it with `io.sfere:analytics:0.1.1` and remove the `maven("https://jitpack.io")` repository if nothing else uses it.
 
 ## Set up
 
@@ -228,6 +212,6 @@ Set `debug = true` to log every payload under the `Sfere` tag.
 ./gradlew --stop                               # stop the Gradle daemons afterwards
 ```
 
-Every pull request runs the same checks in GitHub Actions. A `vX.Y.Z` tag cuts the GitHub release (and publishes a copy to GitHub Packages), and JitPack builds that tag the first time an app requests it. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the pull-request policy and [`docs/ci-cd.md`](docs/ci-cd.md) the workflows and the release steps.
+Every pull request runs the same checks in GitHub Actions. A `vX.Y.Z` tag publishes that version to Maven Central and cuts the GitHub release. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the pull-request policy and [`docs/ci-cd.md`](docs/ci-cd.md) the workflows and the release steps.
 
 The tests read the shared fixtures in `fixtures/` (deep-link click IDs, event renames), which every Sfere SDK must pass. The iOS SDK (`sfere-ios-sdk`) keeps an identical copy.
