@@ -1,8 +1,7 @@
 name: release
 
-# Publishes the SDK to GitHub Packages and cuts the GitHub release. Apps install
-# from JitPack (jitpack.yml), which builds the same public tag on first request and
-# needs no credentials; GitHub Packages is a second channel that needs a token.
+# Publishes the SDK to Maven Central as io.sfere:analytics and cuts the GitHub
+# release. Apps install it from mavenCentral() with no credentials.
 #
 # Trigger: a `vX.Y.Z` (or `vX.Y.Z-beta.N`) tag on a commit that is on main. Creating
 # the tag is the privileged act: the "release-tags" ruleset lets only repository
@@ -12,13 +11,18 @@ name: release
 #
 # Flow: the same CI gate every pull request passes (ci.yml, via workflow_call) ->
 # the tag must equal VERSION_NAME in gradle.properties and have a CHANGELOG section
-# -> publish io.sfere:analytics:VERSION to GitHub Packages -> download the
-# published AAR back from the registry and check it is byte-identical to the one
-# just built -> GitHub release with the AAR, sources jar and POM attached and the
-# CHANGELOG section as notes.
+# -> sign and upload io.sfere:analytics:VERSION to the Central Portal, which
+# validates and publishes it (the Gradle task waits until it is published) ->
+# download it back from Maven Central and check the AAR is byte-identical to the
+# one just built -> GitHub release with the AAR, sources jar and POM attached and
+# the CHANGELOG section as notes.
 #
-# A Maven version on GitHub Packages is immutable: publishing the same version
-# twice fails, which is the point. To ship a fix, bump VERSION_NAME and tag again.
+# A version on Maven Central is permanent: it can never be deleted or replaced.
+# To ship a fix, bump VERSION_NAME and tag again.
+#
+# Secrets (in the `release` environment): MAVEN_CENTRAL_USERNAME and
+# MAVEN_CENTRAL_PASSWORD (a Central Portal user token for the io.sfere namespace),
+# SIGNING_KEY (the ASCII-armored private GPG key) and SIGNING_KEY_PASSWORD.
 # Developer-facing instructions: docs/ci-cd.md.
 
 on:
@@ -38,14 +42,13 @@ jobs:
     secrets: inherit
 
   publish:
-    name: Publish to GitHub Packages
+    name: Publish to Maven Central
     needs: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90 # Central validates and publishes in minutes, sometimes much longer
     environment: release
     permissions:
       contents: write # the GitHub release
-      packages: write # GitHub Packages (Maven)
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
@@ -92,23 +95,35 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
 
-      - name: Publish to GitHub Packages
+      - name: Publish to Maven Central
         env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :sfere-analytics:publishReleasePublicationToGitHubPackagesRepository --no-daemon
-
-      # The registry's copy must be the bytes just built, and complete. Fetched back
-      # as a consumer would fetch it (Basic auth with a token that can read packages).
-      - name: Verify the published artifact against the registry
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          BASE="https://maven.pkg.github.com/${GITHUB_REPOSITORY}/io/sfere/analytics/${VERSION}"
+          for v in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword \
+                   ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword; do
+            [ -n "${!v}" ] || { echo "::error::Secret for ${v#ORG_GRADLE_PROJECT_} is not set in the release environment."; exit 1; }
+          done
+          ./gradlew :sfere-analytics:publishToMavenCentral --no-daemon
+
+      # The registry's copy must be the bytes just built, complete and signed. Fetched
+      # back as a consumer would fetch it. The Portal reports "published" a little
+      # before every file is served from repo1, so wait for it.
+      - name: Verify the published artifact against Maven Central
+        run: |
+          BASE="https://repo1.maven.org/maven2/io/sfere/analytics/${VERSION}"
           mkdir -p "$RUNNER_TEMP/registry"
-          for f in "analytics-${VERSION}.aar" "analytics-${VERSION}.pom" "analytics-${VERSION}-sources.jar" "analytics-${VERSION}.module"; do
-            curl -fsSL --proto '=https' -u "token:${GITHUB_TOKEN}" -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
-              || { echo "::error::$f is not on the registry after the publish step."; exit 1; }
+          for i in $(seq 1 60); do
+            curl -fsI --proto '=https' "$BASE/analytics-${VERSION}.pom" > /dev/null && break
+            echo "Not on Maven Central yet (attempt $i); waiting 30 s."
+            sleep 30
+          done
+          for f in "analytics-${VERSION}.aar" "analytics-${VERSION}.pom" "analytics-${VERSION}-sources.jar" \
+                   "analytics-${VERSION}-javadoc.jar" "analytics-${VERSION}.module" "analytics-${VERSION}.aar.asc"; do
+            curl -fsSL --proto '=https' --retry 5 --retry-delay 20 --retry-all-errors -o "$RUNNER_TEMP/registry/$f" "$BASE/$f" \
+              || { echo "::error::$f is not on Maven Central after the publish step."; exit 1; }
           done
           LOCAL_AAR="sfere-analytics/build/outputs/aar/sfere-analytics-release.aar"
           LOCAL_SHA="$(sha256sum "$LOCAL_AAR" | cut -d' ' -f1)"
@@ -123,7 +138,7 @@ jobs:
           grep -q "com.segment.analytics.kotlin" "$RUNNER_TEMP/registry/analytics-${VERSION}.pom" \
             || { echo "::error::The published POM does not declare the base library dependency."; exit 1; }
           echo "AAR_SHA256=$LOCAL_SHA" >> "$GITHUB_ENV"
-          echo "::notice::Registry copy of io.sfere:analytics:${VERSION} verified (sha256 ${LOCAL_SHA})."
+          echo "::notice::Maven Central copy of io.sfere:analytics:${VERSION} verified (sha256 ${LOCAL_SHA})."
 
       - name: Release notes from the CHANGELOG
         run: |
@@ -137,15 +152,13 @@ jobs:
             echo
             echo "## Install"
             echo
-            echo "From JitPack, no credentials needed. Add \`maven(\"https://jitpack.io\")\` to the repositories in \`settings.gradle.kts\`, then:"
+            echo "From Maven Central, no credentials needed (\`mavenCentral()\` is in the default repositories):"
             echo
             echo '```kotlin'
-            echo "implementation(\"com.github.${GITHUB_REPOSITORY_OWNER}:${GITHUB_REPOSITORY#*/}:${TAG}\")"
+            echo "implementation(\"io.sfere:analytics:${VERSION}\")"
             echo '```'
             echo
-            echo "Also on GitHub Packages as \`io.sfere:analytics:${VERSION}\` (\`https://maven.pkg.github.com/${GITHUB_REPOSITORY}\`, needs a token with \`read:packages\`)."
-            echo
-            echo "AAR sha256 (the GitHub Packages build attached here): \`${AAR_SHA256}\`"
+            echo "AAR sha256 (the Maven Central copy attached here): \`${AAR_SHA256}\`"
           } >> "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
@@ -166,7 +179,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Tag | \`${TAG}\` |"
-            echo "| Package | https://github.com/${GITHUB_REPOSITORY}/packages |"
+            echo "| Package | https://central.sonatype.com/artifact/io.sfere/analytics/${VERSION} |"
             echo "| Release | https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG} |"
             echo "| AAR sha256 | \`${AAR_SHA256}\` |"
           } >> "$GITHUB_STEP_SUMMARY"

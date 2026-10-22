@@ -7,6 +7,18 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
+## [0.1.1] - Unreleased
+
+### Changed
+
+- Releases are published to **Maven Central** as `io.sfere:analytics`. Apps add nothing
+  to their repositories (`mavenCentral()` is there by default) and depend on
+  `implementation("io.sfere:analytics:0.1.1")`. No token is needed.
+- JitPack and GitHub Packages are no longer release channels. Apps on
+  `com.github.sfere-io:sfere-android-sdk:v0.1.0` should move to `io.sfere:analytics`;
+  the SDK itself is unchanged.
+- The SDK is licensed under the MIT License (`LICENSE`).
+
 ## [0.1.0] - 2026-10-21
 
 The first public release. `0.1.0-beta.1` was never tagged or published; its changes ship here.

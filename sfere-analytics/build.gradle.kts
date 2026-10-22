@@ -1,7 +1,12 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.DeploymentValidation
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    `maven-publish`
+    alias(libs.plugins.maven.publish)
 }
 
 group = providers.gradleProperty("GROUP").get()
@@ -53,13 +58,6 @@ android {
         // Dependabot owns dependency freshness; a new upstream release must not break CI.
         disable += setOf("GradleDependency", "AndroidGradlePluginVersion", "NewerVersionAvailable")
     }
-
-    publishing {
-        // One publication, the release AAR with its sources. Javadoc is not shipped yet.
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
 }
 
 kotlin {
@@ -91,58 +89,58 @@ sonar {
     }
 }
 
-// Publishing. Apps install from JitPack (jitpack.yml), which runs
-// publishReleasePublicationToMavenLocal on a release tag and serves the result as
-// com.github.sfere-io:sfere-android-sdk:<tag>, with no credentials. The release workflow also
-// publishes io.sfere:analytics to GitHub Packages; Maven Central (same coordinates) comes later.
-// GitHub Packages credentials come from Gradle properties (gpr.user / gpr.token, in
-// ~/.gradle/gradle.properties, never in the repo) or, in GitHub Actions, from GITHUB_ACTOR /
-// GITHUB_TOKEN. They are read only when publishing to that repository, so a build without
-// them (JitPack, CI's local publish) is unaffected. Release flow: docs/ci-cd.md.
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = project.group.toString()
-            artifactId = "analytics"
-            version = project.version.toString()
-            afterEvaluate {
-                from(components["release"])
-            }
-            pom {
-                name.set("Sfere Analytics for Android")
-                description.set("Collects first-party fan events in Android apps and sends them to the Sfere ingestion endpoint.")
-                url.set("https://github.com/sfere-io/sfere-android-sdk")
-                organization {
-                    name.set("Sfere")
-                    url.set("https://sfere.io")
-                }
-                developers {
-                    developer {
-                        id.set("sfere")
-                        name.set("Sfere")
-                        email.set("engineering@sfere.io")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/sfere-io/sfere-android-sdk")
-                    connection.set("scm:git:https://github.com/sfere-io/sfere-android-sdk.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/sfere-io/sfere-android-sdk.git")
-                }
+// Publishing. Releases go to Maven Central as io.sfere:analytics through the Central Portal
+// (`./gradlew publishToMavenCentral`, run by release.yml on a v* tag). The upload is signed
+// with GPG; the Portal credentials and the signing key come from Gradle properties
+// (mavenCentralUsername / mavenCentralPassword / signingInMemoryKey /
+// signingInMemoryKeyPassword), set in CI as ORG_GRADLE_PROJECT_* environment variables and
+// never in the repo. `./gradlew publishToMavenLocal` needs none of them: CI's Build job uses
+// it to check the publication without touching a registry. Release flow: docs/ci-cd.md.
+mavenPublishing {
+    // Wait until the release is live on Central, so release.yml can fetch it back.
+    publishToMavenCentral(automaticRelease = true, validateDeployment = DeploymentValidation.PUBLISHED)
+    // Signed whenever the key is supplied, which release.yml checks before publishing (Central
+    // rejects unsigned files). Without it, publishToMavenLocal still works for dry runs.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
+    // One publication: the release AAR with its sources. Central requires a javadoc jar; it is
+    // empty until the SDK ships generated API docs.
+    configure(
+        AndroidSingleVariantLibrary(
+            javadocJar = JavadocJar.Empty(),
+            sourcesJar = SourcesJar.Sources(),
+            variant = "release",
+        ),
+    )
+    coordinates(project.group.toString(), "analytics", project.version.toString())
+    pom {
+        name.set("Sfere Analytics for Android")
+        description.set("Collects first-party fan events in Android apps and sends them to the Sfere ingestion endpoint.")
+        url.set("https://github.com/sfere-io/sfere-android-sdk")
+        inceptionYear.set("2026")
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/license/mit")
+                distribution.set("repo")
             }
         }
-    }
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/sfere-io/sfere-android-sdk")
-            credentials {
-                username = providers.gradleProperty("gpr.user")
-                    .orElse(providers.environmentVariable("GITHUB_ACTOR"))
-                    .orNull
-                password = providers.gradleProperty("gpr.token")
-                    .orElse(providers.environmentVariable("GITHUB_TOKEN"))
-                    .orNull
+        organization {
+            name.set("Sfere")
+            url.set("https://sfere.io")
+        }
+        developers {
+            developer {
+                id.set("sfere")
+                name.set("Sfere")
+                email.set("engineering@sfere.io")
             }
+        }
+        scm {
+            url.set("https://github.com/sfere-io/sfere-android-sdk")
+            connection.set("scm:git:https://github.com/sfere-io/sfere-android-sdk.git")
+            developerConnection.set("scm:git:ssh://git@github.com/sfere-io/sfere-android-sdk.git")
         }
     }
 }

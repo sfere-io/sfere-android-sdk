@@ -10,6 +10,7 @@ plugins {
     // SonarQube Cloud analysis: `./gradlew sonar` (CI's SonarQube job, with SONAR_TOKEN).
     // Keys from https://sonarcloud.io/project/configuration/GitHubActions?id=sfere-io_sfere-android-sdk
     alias(libs.plugins.sonarqube)
+    alias(libs.plugins.maven.publish) apply false
 }
 
 sonar {
