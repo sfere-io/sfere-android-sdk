@@ -1,6 +1,9 @@
 package io.sfere.analytics.internal
 
+import com.segment.analytics.kotlin.core.Analytics
+import com.segment.analytics.kotlin.core.Configuration
 import com.segment.analytics.kotlin.core.TrackEvent
+import com.segment.analytics.kotlin.core.utilities.InMemoryStorageProvider
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.serialization.json.Json
@@ -80,6 +83,39 @@ class SfereEnrichmentPluginTest {
         assertNull(store.getString("sfere_session"))
         assertEquals(ClickIdStore.Snapshot(), clicks.snapshot())
         assertTrue(session.tick().isNew)
+    }
+
+    /** The base library processes events on a thread pool: an event called before reset() may be processed after one called after it. */
+    @Test
+    fun anEventCalledBeforeAResetKeepsItsSessionWhenProcessedLate() {
+        val analytics = Analytics(
+            Configuration(writeKey = "key", application = "jvm-test", storageProvider = InMemoryStorageProvider()).apply {
+                autoAddSegmentDestination = false
+            },
+        )
+        try {
+            val identities = IdentityTracker()
+            val plugin = SfereEnrichmentPlugin(session, clicks, consent, clock, LibraryStamp("lib", "1.0.0", "base@1"), identities)
+            plugin.analytics = analytics
+            val firstSession = session.tick().id
+            identities.reset("anon-1")
+            val calledBefore = identities.stamp()
+            clock.now += 60_000
+            identities.reset("anon-2")
+            val calledAfter = identities.stamp()
+
+            val after = plugin.execute(trackEvent("after_logout").apply { enrichment = calledAfter }) as TrackEvent
+            val before = plugin.execute(trackEvent("logout").apply { enrichment = calledBefore }) as TrackEvent
+
+            assertEquals(clock.now, after.context["session"]!!.jsonObject["id"]!!.jsonPrimitive.long)
+            assertEquals("anon-2", after.anonymousId)
+            assertEquals(firstSession, before.context["session"]!!.jsonObject["id"]!!.jsonPrimitive.long)
+            assertEquals("anon-1", before.anonymousId)
+            plugin.reset() // the base library's reset: a no-op once the tracker has an identity
+            assertEquals(clock.now, session.currentId())
+        } finally {
+            analytics.shutdown()
+        }
     }
 }
 

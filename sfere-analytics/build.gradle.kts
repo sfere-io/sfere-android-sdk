@@ -72,6 +72,7 @@ dependencies {
     api(libs.segment.analytics.android)
     api(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.lifecycle.process)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

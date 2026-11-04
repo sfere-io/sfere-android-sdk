@@ -54,6 +54,9 @@ internal fun Configuration.applySfere(host: SfereHost, config: SfereConfig) {
     collectDeviceId = false
 }
 
+/** The state [io.sfere.analytics.Sfere] shares with the plugins [installSfere] adds. */
+internal class SfereParts(val consent: ConsentStore, val identities: IdentityTracker)
+
 /** Adds the Sfere plugins and destination to an Analytics instance built with [applySfere]. */
 internal fun installSfere(
     analytics: Analytics,
@@ -62,13 +65,14 @@ internal fun installSfere(
     store: KeyValueStore,
     clock: Clock = SystemClock,
     library: LibraryStamp = sfereLibrary,
-): ConsentStore {
+): SfereParts {
     val consent = ConsentStore(store)
     // The config value is the initial consent only: a choice already stored by setConsent wins.
     if (consent.get() == null) config.consent?.let { consent.set(it) }
     val timeoutMs = config.sessionTimeoutMinutes.coerceAtLeast(1) * MILLIS_PER_MINUTE
-    analytics.add(SfereEnrichmentPlugin(SessionTracker(store, clock, timeoutMs), ClickIdStore(store), consent, clock, library))
+    val identities = IdentityTracker().also { it.start(analytics) }
+    analytics.add(SfereEnrichmentPlugin(SessionTracker(store, clock, timeoutMs), ClickIdStore(store), consent, clock, library, identities))
     analytics.add(SfereDestination(config.writeKey, host.apiHost, sfereHttpConfig(), library.version))
     if (store.getString(ENABLED_KEY) == "false") analytics.enabled = false
-    return consent
+    return SfereParts(consent, identities)
 }

@@ -8,7 +8,7 @@ Version `0.1.0` is released (through JitPack). Version `0.1.1` moves distributio
 
 | Area | State |
 |---|---|
-| Android SDK | 53 unit tests pass and the sample app builds. **Not yet run on an emulator or device**, so `Sfere.setup(context)`, the SharedPreferences store and the Android lifecycle events still need a real run. |
+| Android SDK | 62 unit tests pass and the sample app builds. On 2026-11-04 a stand-alone app using the published artifact ran on an API 35 emulator against the local mock: `Sfere.setup(context)`, the lifecycle events, logout then `reset()`, and the upload on going to the background all behaved as expected. The sample app itself has not run on an emulator yet. |
 | Same payload as iOS | The shared parity scenario matches field by field (`tools/parity.sh`). |
 | Staging | Not tested against the real ingestion endpoint yet. Everything so far runs against a local mock. |
 | CI | Every pull request runs ktlint, detekt, Android Lint, the public API check, the unit tests with coverage, a SonarQube scan and the AAR/APK build with a local publish check ([`docs/ci-cd.md`](docs/ci-cd.md)). |
@@ -36,7 +36,7 @@ JVM tests, no emulator needed:
 JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :sfere-analytics:testDebugUnitTest
 ```
 
-Expected: `BUILD SUCCESSFUL`, with 53 tests in `sfere-analytics/build/test-results/`.
+Expected: `BUILD SUCCESSFUL`, with 62 tests in `sfere-analytics/build/test-results/`.
 
 The rest of what CI checks, in one command (VS Code task *Android: quality checks*):
 

@@ -2,6 +2,8 @@
 agp = "9.4.1"
 kotlin = "2.4.21"
 segment-analytics = "1.26.0"
+# The version the base library brings at runtime; the SDK compiles against it to flush when the app goes to the background.
+androidx-lifecycle = "2.6.1"
 kotlinx-serialization-json = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 junit = "4.13.2"
@@ -17,6 +19,7 @@ maven-publish = "0.37.0"
 
 [libraries]
 segment-analytics-android = { module = "com.segment.analytics.kotlin:android", version.ref = "segment-analytics" }
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }

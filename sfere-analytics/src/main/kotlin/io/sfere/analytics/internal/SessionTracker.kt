@@ -35,6 +35,9 @@ internal class SessionTracker(private val store: KeyValueStore, private val cloc
     }
 
     @Synchronized
+    fun currentId(): Long? = id
+
+    @Synchronized
     fun reset() {
         id = null
         lastActivity = 0

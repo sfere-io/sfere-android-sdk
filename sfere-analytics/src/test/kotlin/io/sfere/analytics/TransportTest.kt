@@ -8,7 +8,9 @@ import com.segment.analytics.kotlin.core.Telemetry
 import com.segment.analytics.kotlin.core.UserInfo
 import com.segment.analytics.kotlin.core.utilities.InMemoryStorageProvider
 import com.segment.analytics.kotlin.core.utilities.encodeToBase64
+import io.sfere.analytics.internal.BackgroundFlush
 import io.sfere.analytics.internal.FakeClock
+import io.sfere.analytics.internal.FakeLifecycleOwner
 import io.sfere.analytics.internal.HostValidation
 import io.sfere.analytics.internal.InMemoryKeyValueStore
 import io.sfere.analytics.internal.LIBRARY_NAME
@@ -79,9 +81,9 @@ class TransportTest {
         ).apply { applySfere(host, config) }
         val analytics = Analytics(configuration).also { instances += it }
         val store = InMemoryKeyValueStore()
-        val consent = installSfere(analytics, host, config, store, clock)
+        val parts = installSfere(analytics, host, config, store, clock)
         awaitStartup(analytics)
-        return Harness(Sfere(analytics, consent, store), analytics, store, writeKey)
+        return Harness(Sfere(analytics, parts.consent, store, parts.identities), analytics, store, writeKey)
     }
 
     /**
@@ -279,6 +281,102 @@ class TransportTest {
 
         h.sfere.reset() // logout: a new anonymous id
         waitUntil { h.sfere.anonymousId() != anonymousId }
+    }
+
+    /**
+     * The usual logout: `track("logout")` then straight away `reset()`. The base library's `reset()` swaps the
+     * anonymous id at once but the stored user id later, so a queued event got the old user id with the new
+     * anonymous id (issue #16), and could start the new session. Every event must carry the identity and the
+     * session it was called with.
+     */
+    @Test
+    fun anEventKeepsTheIdentityItWasCalledWith() {
+        val clock = FakeClock()
+        val h = harness(flushAt = 100, flushInterval = 3600, clock = clock)
+        server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+
+        h.sfere.identify("qa-user-001", mapOf("email" to "qa.user1@example.com"))
+        waitUntil { h.analytics.traits()?.get("email") != null }
+        val before = assertNotNull(h.sfere.anonymousId())
+        // The traits are set before the session starts: wait for the session too, before the clock moves.
+        waitUntil { h.store.getString("sfere_session") != null }
+        val firstSession = h.store.getString("sfere_session")!!.substringBefore(':').toLong()
+        clock.now += 60_000 // the session id is its start time: tell the two sessions apart
+        h.sfere.track("logout")
+        h.sfere.reset()
+        h.sfere.track("after_logout")
+        val after = assertNotNull(h.sfere.anonymousId())
+        assertNull("reset clears the user id at once", h.sfere.userId())
+        assertTrue(before != after)
+        Thread.sleep(1_000)
+        h.sfere.flush()
+
+        val request = assertNotNull(server.takeRequest(15, TimeUnit.SECONDS))
+        val batch = body(request)["batch"]!!.jsonArray.map { it.jsonObject }
+        val logout = batch.single { it.str("event") == "logout" }
+        assertEquals("qa-user-001", logout.str("userId"))
+        assertEquals(before, logout.str("anonymousId"))
+        assertEquals("qa.user1@example.com", logout.obj("context")!!.obj("traits")!!.str("email"))
+        val afterLogout = batch.single { it.str("event") == "after_logout" }
+        assertNull(afterLogout.str("userId"))
+        assertEquals(after, afterLogout.str("anonymousId"))
+        assertNull(afterLogout.obj("context")!!["traits"])
+        val session = { event: JsonObject -> event.obj("context")!!.obj("session")!!["id"]!!.jsonPrimitive.long }
+        assertEquals("logout stays in the user's session", firstSession, session(logout))
+        assertEquals(clock.now, session(afterLogout))
+        val sessionStarts = batch.filter { it.str("event") == "session_started" }
+        assertEquals(listOf(firstSession, clock.now), sessionStarts.map(session).sorted())
+        assertEquals(null to after, sessionStarts.single { session(it) == clock.now }.let { it.str("userId") to it.str("anonymousId") })
+        for (event in batch) {
+            val identity = event.str("userId") to event.str("anonymousId")
+            assertTrue(
+                "mixed identity on ${event.str("event") ?: event.str("type")}: $identity",
+                identity == ("qa-user-001" to before) || identity == (null to after),
+            )
+        }
+    }
+
+    @Test
+    fun anAliasNamesTheIdItReplaces() {
+        val h = harness(flushAt = 3, flushInterval = 3600)
+        server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+        val anonymousId = assertNotNull(h.sfere.anonymousId())
+
+        h.sfere.alias("user_9")
+        h.sfere.track("after_alias") // + session_started = 3
+        assertEquals("user_9", h.sfere.userId())
+
+        val batch = body(assertNotNull(server.takeRequest(15, TimeUnit.SECONDS)))["batch"]!!.jsonArray.map { it.jsonObject }
+        val alias = batch.single { it.str("type") == "alias" }
+        assertEquals("user_9", alias.str("userId"))
+        assertEquals(anonymousId, alias.str("previousId"))
+        assertEquals("user_9", batch.single { it.str("event") == "after_alias" }.str("userId"))
+    }
+
+    /** Going to the background uploads at once: Android may cut a background app's network before the next timer. */
+    @Test
+    fun goingToTheBackgroundUploadsAtOnce() {
+        val h = harness(flushAt = 100, flushInterval = 3600)
+        server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+
+        h.sfere.track("add_to_cart")
+        h.analytics.track("Application Backgrounded") // what the base library sends on ON_STOP
+
+        val batch = body(assertNotNull(server.takeRequest(15, TimeUnit.SECONDS)))["batch"]!!.jsonArray.map { it.jsonObject }
+        assertTrue(batch.any { it.str("event") == "app_backgrounded" })
+    }
+
+    @Test
+    fun withoutLifecycleEventsTheAppStoppingUploadsAtOnce() {
+        val h = harness(flushAt = 100, flushInterval = 3600)
+        server.enqueue(MockResponse().setBody("""{"ok":true}"""))
+
+        h.sfere.track("add_to_cart")
+        Thread.sleep(1_000)
+        BackgroundFlush(h.analytics).onStop(FakeLifecycleOwner)
+
+        val batch = body(assertNotNull(server.takeRequest(15, TimeUnit.SECONDS)))["batch"]!!.jsonArray.map { it.jsonObject }
+        assertTrue(batch.any { it.str("event") == "add_to_cart" })
     }
 
     private fun <T> assertNotNull(value: T?): T = assertNotNull(null, value)

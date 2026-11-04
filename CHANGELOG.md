@@ -7,11 +7,27 @@ the tagged version as the GitHub release notes, so write entries for app develop
 
 ## [Unreleased]
 
+### Fixed
+
+- An event tracked just before `reset()` (the usual `track("logout")` then `reset()`) was sent with
+  the old user id but the new anonymous id (iOS sends the old one), and could start the new
+  session. Every event now carries the user id, anonymous id, traits and session it was tracked
+  with. `userId()`
+  and `anonymousId()` also return the new values as soon as `identify`, `alias` or `reset` returns.
+- Going to the background now uploads queued events at once, `app_backgrounded` included, as on
+  iOS. Before, they waited for the next 30-second flush, and Android may block a background app's
+  network by then, so they were sent only on the next app open. With `trackLifecycleEvents = false`
+  the SDK uploads when the app stops.
+
 ### Changed
 
-- No change to the SDK. The release workflow now finishes once Maven Central has
-  validated a release instead of waiting for Central to publish it, so a new version
-  can take up to about 30 minutes after its GitHub release to resolve from `mavenCentral()`.
+- The SDK now depends on `androidx.lifecycle:lifecycle-process` at compile time, in the version
+  the base library already brought at runtime (2.6.1).
+- The release workflow now finishes once Maven Central has validated a release instead of waiting
+  for Central to publish it, so a new version can take up to about 30 minutes after its GitHub
+  release to resolve from `mavenCentral()`.
+- Checked that an app built with Kotlin 2.3.0 compiles against the SDK (built with Kotlin 2.4), so
+  "Kotlin 2.3 or newer" stands.
 
 ## [0.1.1] - 2026-10-22
 

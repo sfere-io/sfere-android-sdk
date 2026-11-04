@@ -85,7 +85,8 @@ sfere.track("add_to_cart", mapOf(
     "items" to listOf(mapOf("item_id" to "sku_12345", "item_name" to "Away Jersey", "price" to 89.99, "quantity" to 1)),
 ))
 sfere.track("match_ticket_scanned", mapOf("match_id" to "42"))   // your own events: snake_case too
-sfere.reset()                                                      // on logout
+sfere.track("logout")
+sfere.reset()                                                      // on logout: events tracked before keep the user
 ```
 
 Send email and phone as plain values. Sfere hashes them for each destination, so never hash them yourself.
@@ -111,7 +112,7 @@ sfere.purchase(SferePurchase(
 | `app_installed` | First launch after install |
 | `app_updated` | First launch after an update |
 | `app_opened` | Cold start and each return to the foreground (`from_background`) |
-| `app_backgrounded` | The app goes to the background (queued events are uploaded) |
+| `app_backgrounded` | The app goes to the background. Queued events, this one included, are uploaded at once. |
 | `session_started` | The first event of each session |
 | `deep_link_opened` | A link opens the app (`url`, `referring_application`) |
 

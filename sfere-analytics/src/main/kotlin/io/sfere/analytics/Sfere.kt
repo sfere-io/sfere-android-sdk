@@ -4,14 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.segment.analytics.kotlin.android.Analytics as AndroidAnalytics
 import com.segment.analytics.kotlin.android.openUrl
 import com.segment.analytics.kotlin.core.Analytics
 import com.segment.analytics.kotlin.core.Telemetry
+import io.sfere.analytics.internal.BackgroundFlush
 import io.sfere.analytics.internal.ConfigValidation
 import io.sfere.analytics.internal.ConsentStore
 import io.sfere.analytics.internal.ENABLED_KEY
 import io.sfere.analytics.internal.EventNames
+import io.sfere.analytics.internal.IdentityTracker
 import io.sfere.analytics.internal.KeyValueStore
 import io.sfere.analytics.internal.SfereLog
 import io.sfere.analytics.internal.SharedPreferencesKeyValueStore
@@ -35,6 +38,7 @@ public class Sfere internal constructor(
     private val analytics: Analytics?,
     private val consentStore: ConsentStore?,
     private val store: KeyValueStore?,
+    private val identities: IdentityTracker? = null,
 ) {
     public companion object {
         @Volatile
@@ -75,13 +79,23 @@ public class Sfere internal constructor(
                             applySfere(validation.host, config)
                         }
                         val store = SharedPreferencesKeyValueStore(appContext, config.writeKey)
-                        val consent = installSfere(analytics, validation.host, config, store)
-                        Sfere(analytics, consent, store).also { instance = it }
+                        val parts = installSfere(analytics, validation.host, config, store)
+                        if (!config.trackLifecycleEvents) observeBackground(analytics)
+                        Sfere(analytics, parts.consent, store, parts.identities).also { instance = it }
                     }
                 }
             } catch (e: Exception) {
                 SfereLog.error("Sfere is disabled: setup failed with $e")
                 disabled
+            }
+        }
+
+        // ProcessLifecycleOwner needs the main thread, where Application.onCreate runs.
+        private fun observeBackground(analytics: Analytics) {
+            try {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(BackgroundFlush(analytics))
+            } catch (e: Exception) {
+                SfereLog.debug("No upload on background: $e")
             }
         }
     }
@@ -90,35 +104,37 @@ public class Sfere internal constructor(
     @JvmOverloads
     public fun track(name: String, properties: Map<String, Any?>? = null) {
         if (!validEventName(name)) return
-        run("track") { it.track(name, properties.toJsonObject()) }
+        run("track") { it.track(name, properties.toJsonObject(), stamp()) }
     }
 
     /** Sends a GA4 `purchase` event. */
     public fun purchase(purchase: SferePurchase) {
-        run("purchase") { it.track("purchase", purchase.toJson()) }
+        run("purchase") { it.track("purchase", purchase.toJson(), stamp()) }
     }
 
     /** Associates the device with a user. Traits (email, phone, …) are sent as plain values. */
     @JvmOverloads
     public fun identify(userId: String?, traits: Map<String, Any?>? = null) {
         run("identify") {
-            if (userId.isNullOrBlank()) it.identify(traits.toJsonObject()) else it.identify(userId, traits.toJsonObject())
+            val json = traits.toJsonObject()
+            val stamp = identities?.identify(userId, json)
+            if (userId.isNullOrBlank()) it.identify(json, stamp) else it.identify(userId, json, stamp)
         }
     }
 
     /** Records a screen view. */
     @JvmOverloads
     public fun screen(name: String, properties: Map<String, Any?>? = null, category: String = "") {
-        run("screen") { it.screen(name, properties.toJsonObject(), category) }
+        run("screen") { it.screen(name, properties.toJsonObject(), category, stamp()) }
     }
 
     @JvmOverloads
     public fun group(groupId: String, traits: Map<String, Any?>? = null) {
-        run("group") { it.group(groupId, traits.toJsonObject()) }
+        run("group") { it.group(groupId, traits.toJsonObject(), stamp()) }
     }
 
     public fun alias(newId: String) {
-        run("alias") { it.alias(newId) }
+        run("alias") { it.alias(newId, identities?.alias(newId)) }
     }
 
     /**
@@ -144,7 +160,7 @@ public class Sfere internal constructor(
             val properties = LinkedHashMap<String, JsonPrimitive>()
             properties["url"] = JsonPrimitive(url)
             if (!referrer.isNullOrEmpty()) properties["referring_application"] = JsonPrimitive(referrer)
-            it.track(EventNames.DEEP_LINK_OPENED, JsonObject(properties))
+            it.track(EventNames.DEEP_LINK_OPENED, JsonObject(properties), stamp())
         }
     }
 
@@ -168,9 +184,15 @@ public class Sfere internal constructor(
     public val isEnabled: Boolean
         get() = analytics?.enabled ?: false
 
-    /** Logout: new anonymous id, no user id or traits, a new session, and no stored click IDs. */
+    /**
+     * Logout: new anonymous id, no user id or traits, a new session, and no stored click IDs. Events tracked
+     * before the call keep the user they were tracked with.
+     */
     public fun reset() {
-        run("reset") { it.reset() }
+        run("reset") {
+            it.reset()
+            identities?.reset(it.anonymousId())
+        }
     }
 
     /** Uploads queued events now. */
@@ -178,9 +200,15 @@ public class Sfere internal constructor(
         run("flush") { it.flush() }
     }
 
-    public fun anonymousId(): String? = analytics?.let { safely { it.anonymousId() } }
+    public fun anonymousId(): String? = identities?.current?.anonymousId ?: analytics?.let { safely { it.anonymousId() } }
 
-    public fun userId(): String? = analytics?.let { safely { it.userId() } }
+    public fun userId(): String? {
+        identities?.current?.let { return it.userId }
+        return analytics?.let { safely { it.userId() } }
+    }
+
+    // The identity at the moment of the call, so that a later reset() cannot change it.
+    private fun stamp() = identities?.stamp()
 
     private inline fun run(action: String, block: (Analytics) -> Unit) {
         val analytics = this.analytics

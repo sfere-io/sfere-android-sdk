@@ -17,7 +17,7 @@ internal data class LibraryStamp(val name: String, val version: String, val base
 
 /**
  * Everything Sfere adds to an event, in one place so the order is explicit:
- * rename, session, link click IDs, then the context fields and `sfere_dedup_id`.
+ * identity, rename, session, link click IDs, then the context fields and `sfere_dedup_id`.
  */
 internal class SfereEnrichmentPlugin(
     private val session: SessionTracker,
@@ -25,9 +25,14 @@ internal class SfereEnrichmentPlugin(
     private val consent: ConsentStore,
     private val clock: Clock,
     private val library: LibraryStamp,
+    private val identities: IdentityTracker = IdentityTracker(),
 ) : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Enrichment
     override lateinit var analytics: Analytics
+
+    // The latest reset whose session clearing has run, and the session it ended; see [Identity.resets].
+    private var resetsApplied = 0
+    private var sessionBeforeReset: Long? = null
 
     override fun execute(event: BaseEvent): BaseEvent? = try {
         enrich(event)
@@ -37,6 +42,10 @@ internal class SfereEnrichmentPlugin(
     }
 
     private fun enrich(event: BaseEvent): BaseEvent {
+        val stamp = event.enrichment as? IdentityStamp
+        val identity = stamp?.identity ?: identities.current
+        identity?.let { applyIdentity(event, it, stamped = stamp != null) }
+
         if (event is TrackEvent) {
             event.event = EventNames.rename(event.event)
             if (event.event == EventNames.DEEP_LINK_OPENED) {
@@ -44,11 +53,11 @@ internal class SfereEnrichmentPlugin(
             }
         }
 
-        val tick = session.tick()
+        val tick = sessionTick(identity)
         if (tick.isNew) {
             clicks.clear()
             val isSessionStart = event is TrackEvent && event.event == EventNames.SESSION_STARTED
-            if (!isSessionStart) emitSessionStarted(event)
+            if (!isSessionStart) emitSessionStarted(event, identity)
         }
 
         if (event is TrackEvent && event.event == EventNames.DEEP_LINK_OPENED) {
@@ -56,7 +65,7 @@ internal class SfereEnrichmentPlugin(
             clicks.merge(ClickIdParser.parse(url, clock.nowMillis()))
         }
 
-        event.context = buildContext(event, tick.id)
+        event.context = buildContext(event, tick.id, identity)
 
         if (event is TrackEvent) {
             val dedup = event.properties["sfere_dedup_id"]
@@ -67,7 +76,7 @@ internal class SfereEnrichmentPlugin(
         return event
     }
 
-    private fun buildContext(event: BaseEvent, sessionId: Long): JsonObject {
+    private fun buildContext(event: BaseEvent, sessionId: Long, identity: Identity?): JsonObject {
         val context = LinkedHashMap<String, JsonElement>(event.context)
         val snapshot = clicks.snapshot()
 
@@ -84,10 +93,14 @@ internal class SfereEnrichmentPlugin(
         }
 
         if (event !is IdentifyEvent) {
-            val traits = try {
-                analytics.traits()
-            } catch (e: Exception) {
-                null
+            val traits = if (identity != null) {
+                identity.traits
+            } else {
+                try {
+                    analytics.traits()
+                } catch (e: Exception) {
+                    null
+                }
             }
             if (!traits.isNullOrEmpty()) {
                 val merged = LinkedHashMap<String, JsonElement>(traits)
@@ -110,14 +123,37 @@ internal class SfereEnrichmentPlugin(
         return JsonObject(context)
     }
 
-    private fun emitSessionStarted(trigger: BaseEvent) {
+    /** `session_started` gets the timestamp and the identity of the event that started the session. */
+    private fun emitSessionStarted(trigger: BaseEvent, identity: Identity?) {
         val timestamp = trigger.timestamp
-        analytics.track(EventNames.SESSION_STARTED) { event ->
-            event?.also { it.timestamp = timestamp }
+        if (identity != null) {
+            analytics.track(EventNames.SESSION_STARTED, enrichment = IdentityStamp(identity, timestamp))
+        } else {
+            analytics.track(EventNames.SESSION_STARTED) { event ->
+                event?.also { it.timestamp = timestamp }
+            }
         }
     }
 
+    // The first event called after reset() ends the session and starts a new one. The base library processes
+    // events on a thread pool, so an event called before the reset may come later: it keeps the old session.
+    @Synchronized
+    private fun sessionTick(identity: Identity?): SessionTracker.Tick {
+        if (identity != null && identity.resets > resetsApplied) {
+            resetsApplied = identity.resets
+            sessionBeforeReset = session.currentId()
+            session.reset()
+            clicks.clear()
+        } else if (identity != null && identity.resets < resetsApplied) {
+            sessionBeforeReset?.let { return SessionTracker.Tick(it, isNew = false) }
+        }
+        return session.tick()
+    }
+
+    // The base library calls this on its own threads, possibly before events called earlier are processed.
+    // With an identity tracker the reset happens in sessionTick instead.
     override fun reset() {
+        if (identities.current != null) return
         session.reset()
         clicks.clear()
     }

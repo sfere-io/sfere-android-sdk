@@ -34,7 +34,12 @@ internal class SfereDestination(
 
     private var pipeline: SferePipeline? = null
 
-    override fun track(payload: TrackEvent): BaseEvent = payload.also { enqueue(it) }
+    // Going to the background uploads at once (as on iOS): Android may cut a background app's network before
+    // the next timer. The flush goes through the same queue as the event, so it includes it.
+    override fun track(payload: TrackEvent): BaseEvent = payload.also {
+        enqueue(it)
+        if (it.event == EventNames.APP_BACKGROUNDED) flush()
+    }
     override fun identify(payload: IdentifyEvent): BaseEvent = payload.also { enqueue(it) }
     override fun screen(payload: ScreenEvent): BaseEvent = payload.also { enqueue(it) }
     override fun group(payload: GroupEvent): BaseEvent = payload.also { enqueue(it) }
