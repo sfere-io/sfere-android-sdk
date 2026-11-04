@@ -84,3 +84,9 @@ internal class FakeSharedPreferences(private val failing: Boolean = false) : Sha
         }
     }
 }
+
+/** A LifecycleOwner for calling an observer directly; the observers under test never read its lifecycle. */
+internal object FakeLifecycleOwner : androidx.lifecycle.LifecycleOwner {
+    override val lifecycle: androidx.lifecycle.Lifecycle
+        get() = error("not used")
+}

@@ -8,12 +8,13 @@ import kotlinx.serialization.json.contentOrNull
 internal object EventNames {
     const val SESSION_STARTED = "session_started"
     const val DEEP_LINK_OPENED = "deep_link_opened"
+    const val APP_BACKGROUNDED = "app_backgrounded"
 
     val renames: Map<String, String> = mapOf(
         "Application Installed" to "app_installed",
         "Application Opened" to "app_opened",
         "Application Updated" to "app_updated",
-        "Application Backgrounded" to "app_backgrounded",
+        "Application Backgrounded" to APP_BACKGROUNDED,
         "Application Foregrounded" to "app_foregrounded",
         "Deep Link Opened" to DEEP_LINK_OPENED,
     )
