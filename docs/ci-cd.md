@@ -173,6 +173,13 @@ download cannot enter a build (this is also what SonarQube's `kotlin:S6474` and
 - Platform-specific build tools (the AAPT2 binaries) are trusted by pattern in the
   `<trusted-artifacts>` block, because a Mac resolves a different file from the
   Linux runner. Everything else is pinned.
+- A plugin marker POM published to Maven Central and the Gradle Plugin Portal
+  differs between the two: the portal serves a short POM it generates itself.
+  Gradle takes the marker from Central first but falls back to the portal, so the
+  Kotlin and detekt markers carry the portal's checksum as an `<also-trust>` too
+  (a runner failed on the Kotlin one on 2026-11-04). Both POMs only point at the
+  plugin jar, which is pinned once. Keep these entries when a bump regenerates
+  the file.
 
 ## Local counterparts
 
